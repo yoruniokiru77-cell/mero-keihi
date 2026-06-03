@@ -104,6 +104,8 @@ input[type=number]{text-align:right}
   .ef{grid-template-columns:1fr 1fr}
   .body{padding:12px 10px 60px}
   .hdr{padding:0 12px}
+  .inc-hint{display:none}
+  .inn{max-width:120px}
 }
 </style>
 </head>
@@ -301,12 +303,12 @@ function renderMonth() {
   /* 収入行 */
   function manRow(label,ded,field,val){
     return "<tr><td>"+label+(ded?"<span class=\"dl\">▼控除</span>":"")+"</td>"
-      +"<td><span style=\"font-size:11px;color:var(--text3)\">入力</span></td>"
+      +"<td class=\"inc-hint\"><span style=\"font-size:11px;color:var(--text3)\">入力</span></td>"
       +"<td><input type=\"number\" class=\"inn\" value=\""+(val||"")+"\" placeholder=\"0\" onchange=\"ic('"+field+"',this.value)\"></td></tr>";
   }
   function autoRow(label,hint,ded,id,val){
     return "<tr><td>"+label+(ded?"<span class=\"dl\">▼控除</span>":"")+"</td>"
-      +"<td><span class=\"ab\">自動</span><span class=\"hi\">"+hint+"</span></td>"
+      +"<td class=\"inc-hint\"><span class=\"ab\">自動</span><span class=\"hi\">"+hint+"</span></td>"
       +"<td class=\"tr\"><span id=\""+id+"\" class=\"av\">"+yen(val)+"</span></td></tr>";
   }
 
@@ -441,8 +443,8 @@ function renderMonth() {
     +"</div>";
 
   html+="<div class=\"card\"><div class=\"ch\">💹 収入</div>"
-    +"<div class=\"ov\"><table class=\"t\" style=\"min-width:480px\">"
-    +"<thead><tr><th style=\"width:160px\">項目</th><th>計算式/種別</th><th style=\"text-align:right;width:160px\">金額</th></tr></thead>"
+    +"<div class=\"ov\"><table class=\"t\">"
+    +"<thead><tr><th style=\"width:160px\">項目</th><th class=\"inc-hint\">計算式/種別</th><th style=\"text-align:right;width:160px\">金額</th></tr></thead>"
     +"<tbody>"
     +"<tr><td class=\"fw\">ポイント</td><td><span class=\"hi\">売上・給料の計算基準</span></td>"
     +"<td><input type=\"number\" class=\"inn\" value=\""+(md.point||"")+"\" placeholder=\"0\" onchange=\"ic('point',this.value)\"></td></tr>"
