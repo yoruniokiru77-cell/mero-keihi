@@ -51,7 +51,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","N
 .trow td{background:var(--bg2)!important;font-weight:600;border-top:2px solid var(--border2)!important}
 .krow td{background:var(--warn-bg)!important}
 .ab{display:inline-block;font-size:10px;padding:1px 6px;border-radius:4px;background:var(--blue-bg);color:var(--blue);font-weight:600;margin-right:4px}
-.hi{font-size:10px;color:var(--text3)}.dl{font-size:10px;color:var(--red);display:block}.av{font-size:13px;font-weight:600;text-align:right}
+.hi{font-size:10px;color:var(--text3)}.dl{font-size:10px;color:var(--red);display:inline-block;margin-left:4px}.av{font-size:13px;font-weight:600;text-align:right}
 .ef{display:grid;grid-template-columns:140px 90px 130px 1fr 110px 80px;gap:8px;align-items:end;margin-bottom:16px}
 .fg label{display:block;font-size:11px;color:var(--text2);margin-bottom:3px;font-weight:500}
 input,select{width:100%;font-size:13px;font-family:inherit;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);-webkit-appearance:none;transition:border-color .15s,box-shadow .15s}
@@ -119,6 +119,10 @@ input[type=number]{text-align:right}
   .inc-t .inn{width:120px;max-width:none;float:none;text-align:right}
   .inc-t .av{min-width:60px;display:inline-block;text-align:right}
   .inc-t .trow td{background:none}
+  .inc-t td:first-child{font-size:15px}
+  .inc-t .ab{font-size:11px}
+  .inc-t .inn{font-size:15px}
+  .inc-t .av{font-size:15px}
 }
 </style>
 </head>
@@ -321,10 +325,9 @@ function renderMonth() {
   }
   function autoRow(label,hint,ded,id,val){
     return "<tr><td>"
-      +label+"<span class=\"ab\">自動</span>"
+      +label+"<span class=\"ab\">自動</span>"+(ded?"<span class=\"dl\">▼控除</span>":"")
       +"<button class=\"info-btn\" onclick=\"var d=this.nextElementSibling;d.style.display=d.style.display==='block'?'none':'block'\">ⓘ</button>"
       +"<div class=\"inc-desc\">"+hint+"</div>"
-      +(ded?"<span class=\"dl\">▼控除</span>":"")
       +"</td>"
       +"<td class=\"inc-hint\"></td>"
       +"<td class=\"tr\"><span id=\""+id+"\" class=\"av\">"+yen(val)+"</span></td></tr>";
