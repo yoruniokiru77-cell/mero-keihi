@@ -446,7 +446,7 @@ function renderMonth() {
     +"<div class=\"ov\"><table class=\"t\">"
     +"<thead><tr><th style=\"width:160px\">項目</th><th class=\"inc-hint\">計算式/種別</th><th style=\"text-align:right;width:160px\">金額</th></tr></thead>"
     +"<tbody>"
-    +"<tr><td class=\"fw\">ポイント</td><td><span class=\"hi\">売上・給料の計算基準</span></td>"
+    +"<tr><td class=\"fw\">ポイント</td><td class=\"inc-hint\"><span class=\"hi\">売上・給料の計算基準</span></td>"
     +"<td><input type=\"number\" class=\"inn\" value=\""+(md.point||"")+"\" placeholder=\"0\" onchange=\"ic('point',this.value)\"></td></tr>"
     +autoRow("売上収入","ポイント×0.57÷1.05×1.1",false,"ru",c.uriage)
     +autoRow("女の子給料","(ポイント−大輔p)×0.3",true,"rg",c.girl)
