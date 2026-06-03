@@ -108,8 +108,17 @@ input[type=number]{text-align:right}
   .card,.card-w,.kpi,.tabs{border-radius:6px}
   .card,.card-w{padding:12px 14px}
   .inc-hint{display:none}
-  .inn{max-width:none;float:none;width:100%}
   .ab-sp{display:inline-block}
+  .inc-t,.inc-t thead,.inc-t tbody,.inc-t tr,.inc-t td,.inc-t th{display:block;border:none;width:100%}
+  .inc-t thead{display:none}
+  .inc-t tr{display:flex;align-items:center;border-bottom:1px solid var(--border);padding:6px 0}
+  .inc-t tr.trow{border-top:2px solid var(--border2);border-bottom:none;background:var(--bg2);padding:8px 10px;border-radius:var(--r)}
+  .inc-t td{display:block;padding:0;border:none;width:auto}
+  .inc-t td:first-child{flex:1;padding-right:8px}
+  .inc-t td:last-child{min-width:0;flex:0 0 auto}
+  .inc-t .inn{width:120px;max-width:none;float:none;text-align:right}
+  .inc-t .av{min-width:60px;display:inline-block;text-align:right}
+  .inc-t .trow td{background:none}
 }
 </style>
 </head>
@@ -447,8 +456,8 @@ function renderMonth() {
     +"</div>";
 
   html+="<div class=\"card\"><div class=\"ch\">💹 収入</div>"
-    +"<div class=\"ov\"><table class=\"t\">"
-    +"<thead><tr><th style=\"width:45%\">項目</th><th class=\"inc-hint\">計算式/種別</th><th style=\"text-align:right;width:55%\">金額</th></tr></thead>"
+    +"<div class=\"ov\"><table class=\"t inc-t\">"
+    +"<thead><tr><th style=\"width:45%\">項目</th><th class=\"inc-hint\">計算式/種別</th><th style=\"text-align:right\">金額</th></tr></thead>"
     +"<tbody>"
     +"<tr><td class=\"fw\">ポイント</td><td class=\"inc-hint\"><span class=\"hi\">売上・給料の計算基準</span></td>"
     +"<td><input type=\"number\" class=\"inn\" value=\""+(md.point||"")+"\" placeholder=\"0\" onchange=\"ic('point',this.value)\"></td></tr>"
