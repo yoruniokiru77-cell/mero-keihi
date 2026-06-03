@@ -99,7 +99,8 @@ input[type=number]{text-align:right}
 .fbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
 .fbtn{font-family:inherit;font-size:12px;font-weight:500;padding:5px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;transition:all .15s}
 .fbtn:hover{background:var(--bg3)}.fbtn.on{background:var(--blue);color:#fff;border-color:var(--blue)}
-.ab-sp{display:none}
+.info-btn{background:none;border:none;font-size:11px;color:var(--text3);cursor:pointer;padding:0 2px;vertical-align:middle;opacity:.7}.info-btn:hover{opacity:1}
+.inc-desc{display:none;font-size:11px;color:var(--text3);margin-top:3px;line-height:1.4}
 @media(max-width:640px){
   .kgrid{grid-template-columns:1fr 1fr}
   .ef{grid-template-columns:1fr 1fr}
@@ -108,7 +109,6 @@ input[type=number]{text-align:right}
   .card,.card-w,.kpi,.tabs{border-radius:6px}
   .card,.card-w{padding:12px 14px}
   .inc-hint{display:none}
-  .ab-sp{display:inline-block}
   .inc-t,.inc-t thead,.inc-t tbody,.inc-t tr,.inc-t td,.inc-t th{display:block;border:none;width:100%}
   .inc-t thead{display:none}
   .inc-t tr{display:flex;align-items:center;border-bottom:1px solid var(--border);padding:6px 0}
@@ -320,8 +320,13 @@ function renderMonth() {
       +"<td><input type=\"number\" class=\"inn\" value=\""+(val||"")+"\" placeholder=\"0\" onchange=\"ic('"+field+"',this.value)\"></td></tr>";
   }
   function autoRow(label,hint,ded,id,val){
-    return "<tr><td>"+label+"<span class=\"ab ab-sp\">自動</span>"+(ded?"<span class=\"dl\">▼控除</span>":"")+"</td>"
-      +"<td class=\"inc-hint\"><span class=\"ab\">自動</span><span class=\"hi\">"+hint+"</span></td>"
+    return "<tr><td>"
+      +label+"<span class=\"ab\">自動</span>"
+      +"<button class=\"info-btn\" onclick=\"var d=this.nextElementSibling;d.style.display=d.style.display==='block'?'none':'block'\">ⓘ</button>"
+      +"<div class=\"inc-desc\">"+hint+"</div>"
+      +(ded?"<span class=\"dl\">▼控除</span>":"")
+      +"</td>"
+      +"<td class=\"inc-hint\"></td>"
       +"<td class=\"tr\"><span id=\""+id+"\" class=\"av\">"+yen(val)+"</span></td></tr>";
   }
 
@@ -459,7 +464,7 @@ function renderMonth() {
     +"<div class=\"ov\"><table class=\"t inc-t\">"
     +"<thead><tr><th style=\"width:45%\">項目</th><th class=\"inc-hint\">計算式/種別</th><th style=\"text-align:right\">金額</th></tr></thead>"
     +"<tbody>"
-    +"<tr><td class=\"fw\">ポイント</td><td class=\"inc-hint\"><span class=\"hi\">売上・給料の計算基準</span></td>"
+    +"<tr><td class=\"fw\">ポイント<button class=\"info-btn\" onclick=\"var d=this.nextElementSibling;d.style.display=d.style.display==='block'?'none':'block'\">ⓘ</button><div class=\"inc-desc\">売上・給料の計算基準</div></td><td class=\"inc-hint\"></td>"
     +"<td><input type=\"number\" class=\"inn\" value=\""+(md.point||"")+"\" placeholder=\"0\" onchange=\"ic('point',this.value)\"></td></tr>"
     +autoRow("売上収入","ポイント×0.57÷1.05×1.1",false,"ru",c.uriage)
     +autoRow("女の子給料","(ポイント−大輔p)×0.3",true,"rg",c.girl)
