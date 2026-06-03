@@ -141,6 +141,7 @@ input[type=number]{text-align:right}
   .exp-t .trow td{display:none}
   .exp-t .trow td:nth-child(2),.exp-t .trow td:nth-child(6){display:block}
   .exp-t .krow td{background:var(--warn-bg)!important}
+  .tate-dt{display:none}
 }
 </style>
 </head>
@@ -357,10 +358,10 @@ function renderMonth() {
     var tateMobile="",tateDesktop="";
     if(e.tatekae==="関島"){
       tateMobile="<span style=\"font-size:11px;font-weight:700;color:#7c3aed;text-align:center;line-height:1.4\">関島<br>立替</span>";
-      tateDesktop=" <span style=\"font-size:10px;padding:1px 5px;border-radius:3px;background:#ede9fe;color:#7c3aed;font-weight:600\">関島立替</span>";
+      tateDesktop=" <span class=\"tate-dt\" style=\"font-size:10px;padding:1px 5px;border-radius:3px;background:#ede9fe;color:#7c3aed;font-weight:600\">関島立替</span>";
     } else if(e.tatekae==="船田"){
       tateMobile="<span style=\"font-size:11px;font-weight:700;color:#0369a1;text-align:center;line-height:1.4\">船田<br>立替</span>";
-      tateDesktop=" <span style=\"font-size:10px;padding:1px 5px;border-radius:3px;background:#e0f2fe;color:#0369a1;font-weight:600\">船田立替</span>";
+      tateDesktop=" <span class=\"tate-dt\" style=\"font-size:10px;padding:1px 5px;border-radius:3px;background:#e0f2fe;color:#0369a1;font-weight:600\">船田立替</span>";
     }
     return "<tr class=\"exp-row"+(kp?" krow":"")+"\">"
       +"<td class=\"ec-tate\">"+tateMobile+"</td>"
