@@ -99,6 +99,7 @@ input[type=number]{text-align:right}
 .fbar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
 .fbtn{font-family:inherit;font-size:12px;font-weight:500;padding:5px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer;transition:all .15s}
 .fbtn:hover{background:var(--bg3)}.fbtn.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.ab-sp{display:none}
 @media(max-width:640px){
   .kgrid{grid-template-columns:1fr 1fr}
   .ef{grid-template-columns:1fr 1fr}
@@ -106,6 +107,7 @@ input[type=number]{text-align:right}
   .hdr{padding:0 12px}
   .inc-hint{display:none}
   .inn{max-width:120px}
+  .ab-sp{display:inline-block}
 }
 </style>
 </head>
@@ -307,7 +309,7 @@ function renderMonth() {
       +"<td><input type=\"number\" class=\"inn\" value=\""+(val||"")+"\" placeholder=\"0\" onchange=\"ic('"+field+"',this.value)\"></td></tr>";
   }
   function autoRow(label,hint,ded,id,val){
-    return "<tr><td>"+label+(ded?"<span class=\"dl\">▼控除</span>":"")+"</td>"
+    return "<tr><td>"+label+"<span class=\"ab ab-sp\">自動</span>"+(ded?"<span class=\"dl\">▼控除</span>":"")+"</td>"
       +"<td class=\"inc-hint\"><span class=\"ab\">自動</span><span class=\"hi\">"+hint+"</span></td>"
       +"<td class=\"tr\"><span id=\""+id+"\" class=\"av\">"+yen(val)+"</span></td></tr>";
   }
