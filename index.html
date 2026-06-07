@@ -1034,10 +1034,12 @@ function openMasterModal(type,id){
     var t=id?master.talents.find(function(x){return x.id===id;}):{};
     body='<div class="mrow"><label>タレント名（源氏名）</label><input type="text" id="mm-name" value="'+(t&&t.name?esc(t.name):"")+'" placeholder="例: さくら"></div>'
       +'<div class="mrow"><label>本名</label><input type="text" id="mm-realname" value="'+(t&&t.realName?esc(t.realName):"")+'" placeholder="例: 山田 花子"></div>'
-      +'<div class="mrow"><label>利用媒体（使用する媒体にチェック）</label><div style="display:flex;flex-direction:column;gap:6px;margin-top:6px" id="mm-platforms">';
+      +'<div class="mrow"><label>利用媒体</label><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px" id="mm-platforms">';
     master.platforms.forEach(function(p){
       var checked=t&&t.platforms&&t.platforms.indexOf(p.id)>=0;
-      body+='<label style="display:flex;align-items:center;gap:8px;font-size:14px;font-weight:400"><input type="checkbox" value="'+p.id+'"'+(checked?" checked":"")+' style="width:auto"> '+esc(p.name)+'</label>';
+      body+='<button type="button" data-pid="'+p.id+'" onclick="togglePlatformBtn(this)"'
+        +' style="padding:7px 16px;border-radius:20px;border:2px solid '+(checked?'var(--blue)':'var(--border2)')+';background:'+(checked?'var(--blue)':'var(--bg)')+';color:'+(checked?'#fff':'var(--text2)')+';font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">'
+        +esc(p.name)+'</button>';
     });
     if(master.platforms.length===0) body+='<span style="font-size:12px;color:var(--text3)">先に媒体を登録してください</span>';
     body+='</div></div>';
@@ -1062,6 +1064,12 @@ function openMasterModal(type,id){
   }
   document.getElementById("masterModalBody").innerHTML=body;
   document.getElementById("masterOverlay").classList.add("show");
+}
+function togglePlatformBtn(btn){
+  var on=btn.style.background.indexOf('var(--blue)')>=0||btn.style.background==='var(--blue)';
+  btn.style.background=on?'var(--bg)':'var(--blue)';
+  btn.style.color=on?'var(--text2)':'#fff';
+  btn.style.borderColor=on?'var(--border2)':'var(--blue)';
 }
 function updateStaffModal(){
   var t=document.getElementById("mm-type").value;
@@ -1113,7 +1121,7 @@ function saveMasterModal(){
       master.platforms=master.platforms.concat([{id:uid(),name:name,rate:rate,formula:pformula}]);
     }
   }else if(type==="talent"){
-    var platforms=Array.from(document.querySelectorAll("#mm-platforms input:checked")).map(function(el){return el.value;});
+    var platforms=Array.from(document.querySelectorAll("#mm-platforms button")).filter(function(b){return b.style.background==='var(--blue)';}).map(function(b){return b.dataset.pid;});
     var realName=(document.getElementById("mm-realname")||{}).value||"";
     if(id){
       master.talents=master.talents.map(function(t){return t.id===id?Object.assign({},t,{name:name,realName:realName,platforms:platforms}):t;});
