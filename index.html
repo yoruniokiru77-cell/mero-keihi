@@ -1039,7 +1039,7 @@ function openMasterModal(type,id){
       var checked=t&&t.platforms&&t.platforms.indexOf(p.id)>=0;
       body+='<button type="button" data-pid="'+p.id+'" onclick="togglePlatformBtn(this)"'
         +' style="padding:7px 16px;border-radius:20px;border:2px solid '+(checked?'var(--blue)':'var(--border2)')+';background:'+(checked?'var(--blue)':'var(--bg)')+';color:'+(checked?'#fff':'var(--text2)')+';font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">'
-        +esc(p.name)+'</button>';
+        +esc(p.name)+(p.formula==="uriage"?'':' '+p.rate+'%')+'</button>';
     });
     if(master.platforms.length===0) body+='<span style="font-size:12px;color:var(--text3)">先に媒体を登録してください</span>';
     body+='</div></div>';
