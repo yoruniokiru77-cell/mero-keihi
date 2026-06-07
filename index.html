@@ -256,6 +256,7 @@ input[type=number]{text-align:right}
 <!-- ヘッダー -->
 <header class="hdr">
   <span class="htitle">mero</span>
+  <script>if(KANPU_MODE)document.currentScript.previousElementSibling.innerHTML+=' <span style="font-size:11px;background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn);border-radius:4px;padding:1px 6px;font-weight:600">🔶 関プ</span>';</script>
   <div class="month-nav">
     <button class="btn-month" onclick="changeMonth(-1)">‹</button>
     <span id="monthLabel">—</span>
@@ -278,7 +279,8 @@ input[type=number]{text-align:right}
 var SB_URL="https://ctwbhyqlpnmhfiizpgab.supabase.co";
 var SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0d2JoeXFscG5taGZpaXpwZ2FiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NTcyMzcsImV4cCI6MjA5NDIzMzIzN30.evN-i3bHm156X6gNLtFJQWIw-YCUyqyEigltG0UD5z0";
 var GAS_URL="YOUR_GAS_URL_HERE";
-var KUBUN=["会社","関ケ","船田"];
+var KANPU_MODE=(new URLSearchParams(location.search).get("p")==="kanpu2026")||(location.hash==="#kanpu2026");
+var KUBUN=KANPU_MODE?["会社","関ケ","関プ","船田"]:["会社","関ケ","船田"];
 var KAMOKU=["旅費交通費","車両費","水道光熱費","通信費","家賃","租税公課","福利厚生費","消耗品費","会議費交際費","キャストとの飲食費","給料","その他"];
 var TABS=["収支","タレント","スタッフ","外注","経費","マスタ"];
 var TAB_ICONS={"収支":"📊","タレント":"🎤","スタッフ":"👥","外注":"🔗","経費":"🧾","マスタ":"⚙️"};
@@ -394,11 +396,14 @@ function calcMonth(m){
     var amt=Math.round(pts*o.rate/100);
     outByO[o.id]=amt;outTotal+=amt;
   });
-  // 経費
+  // 経費（関プは利益計算から除外）
   var expenses=md.expenses||[];
-  var expTotal=expenses.reduce(function(s,e){return s+(+e.amount||0);},0);
+  var mainE=expenses.filter(function(e){return e.kubun!=="関プ";});
+  var kanpuE=expenses.filter(function(e){return e.kubun==="関プ";});
+  var expTotal=mainE.reduce(function(s,e){return s+(+e.amount||0);},0);
+  var kanpuTotal=kanpuE.reduce(function(s,e){return s+(+e.amount||0);},0);
   var profit=incTotal-talTotal-stfTotal-outTotal-expTotal;
-  return{incTotal,incByP,talTotal,talByT,stfTotal,stfByS,outTotal,outByO,expTotal,expenses,profit,md};
+  return{incTotal,incByP,talTotal,talByT,stfTotal,stfByS,outTotal,outByO,expTotal,kanpuTotal,expenses,mainE,kanpuE,profit,md};
 }
 
 /* ===== レンダリング ===== */
@@ -655,9 +660,10 @@ function renderKeihi(){
   var md=getMonth(currentMonth);
   var expenses=md.expenses||[];
   var c=calcMonth(currentMonth);
+  var mainE=c.mainE, kanpuE=c.kanpuE;
 
-  // フィルター・ソート
-  var filtered=expFilter==="all"?expenses.slice():expenses.filter(function(e){return e.kubun===expFilter;});
+  // フィルター・ソート（関プ以外）
+  var filtered=expFilter==="all"?mainE.slice():mainE.filter(function(e){return e.kubun===expFilter;});
   filtered=filtered.sort(function(a,b){
     var da=a.date||"",db=b.date||"";
     if(da===db)return 0;
@@ -688,10 +694,11 @@ function renderKeihi(){
     +'</div>';
 
   // フィルターバー
-  var fbarAll=["all"].concat(KUBUN);
+  var fbarKubun=KUBUN.filter(function(k){return k!=="関プ";});
+  var fbarAll=["all"].concat(fbarKubun);
   var fbar='<div class="fbar">';
   fbarAll.forEach(function(k){
-    var cnt=k==="all"?expenses.length:expenses.filter(function(e){return e.kubun===k;}).length;
+    var cnt=k==="all"?mainE.length:mainE.filter(function(e){return e.kubun===k;}).length;
     var lbl=k==="all"?"すべて":k;
     fbar+='<button class="fbtn'+(expFilter===k?" on":"")+'" onclick="setExpFilter(\''+k+'\')">'+lbl+(cnt>0?' <span style="opacity:.7;font-size:11px">('+cnt+')</span>':'')+' </button>';
   });
@@ -725,25 +732,26 @@ function renderKeihi(){
     listHtml='<div class="empty">該当する経費がありません</div>';
   }
 
-  // クロス集計
+  // クロス集計（関プ除く）
+  var crossKubun=KUBUN.filter(function(k){return k!=="関プ";});
   var cross={};
-  KAMOKU.forEach(function(k){cross[k]={};KUBUN.forEach(function(ku){cross[k][ku]=0;});});
-  expenses.forEach(function(e){if(cross[e.kamoku]&&e.kubun in cross[e.kamoku])cross[e.kamoku][e.kubun]+=(+e.amount||0);});
+  KAMOKU.forEach(function(k){cross[k]={};crossKubun.forEach(function(ku){cross[k][ku]=0;});});
+  mainE.forEach(function(e){if(cross[e.kamoku]&&e.kubun in cross[e.kamoku])cross[e.kamoku][e.kubun]+=(+e.amount||0);});
   var colTots={};
-  KUBUN.forEach(function(ku){colTots[ku]=KAMOKU.reduce(function(s,k){return s+(cross[k][ku]||0);},0);});
+  crossKubun.forEach(function(ku){colTots[ku]=KAMOKU.reduce(function(s,k){return s+(cross[k][ku]||0);},0);});
 
   var crossRows="";
   KAMOKU.forEach(function(k){
-    var rowT=KUBUN.reduce(function(s,ku){return s+(cross[k][ku]||0);},0);
+    var rowT=crossKubun.reduce(function(s,ku){return s+(cross[k][ku]||0);},0);
     crossRows+="<tr><td"+(rowT===0?' style="color:var(--text3)"':'')+">"+k+"</td>";
-    KUBUN.forEach(function(ku){
+    crossKubun.forEach(function(ku){
       var v=cross[k][ku]||0;
       crossRows+="<td"+(v===0?' style="color:var(--text3)"':'')+">"+( v>0?yen(v):"—")+"</td>";
     });
     crossRows+="<td class=\"tc\">"+(rowT>0?yen(rowT):"—")+"</td></tr>";
   });
   var crossFoot="<tr class=\"trow\"><td>合計</td>";
-  KUBUN.forEach(function(ku){crossFoot+="<td>"+yen(colTots[ku])+"</td>";});
+  crossKubun.forEach(function(ku){crossFoot+="<td>"+yen(colTots[ku])+"</td>";});
   crossFoot+="<td class=\"tc\">"+yen(c.expTotal)+"</td></tr>";
 
   var h="";
@@ -777,24 +785,36 @@ function renderKeihi(){
     h+='<div class="card">'
       +fbar
       +'<div class="exp-list">'+listHtml+'</div>'
-      +(filtered.length>0?'<div class="exp-total">'+(expFilter==="all"?"経費合計":expFilter+" 合計")+'<span>'+yen(filteredTotal)+'</span></div>':"")
+      +(filtered.length>0?'<div class="exp-total">'+(expFilter==="all"?"経費合計（関プ除く）":expFilter+" 合計")+'<span>'+yen(filteredTotal)+'</span></div>':"")
       +'</div>';
     // 立替サマリー
-    var sk=expenses.filter(function(e){return e.tatekae==="関島";}).reduce(function(s,e){return s+(+e.amount||0);},0);
-    var fn=expenses.filter(function(e){return e.tatekae==="船田";}).reduce(function(s,e){return s+(+e.amount||0);},0);
+    var sk=mainE.filter(function(e){return e.tatekae==="関島";}).reduce(function(s,e){return s+(+e.amount||0);},0);
+    var fn=mainE.filter(function(e){return e.tatekae==="船田";}).reduce(function(s,e){return s+(+e.amount||0);},0);
     if(sk>0||fn>0){
       h+='<div class="card">';
       if(sk>0) h+='<div class="sum-row"><span style="color:var(--purple);font-weight:600">関島立替合計</span><span style="color:var(--purple);font-weight:700">'+yen(sk)+'</span></div>';
       if(fn>0) h+='<div class="sum-row"><span style="color:var(--sky);font-weight:600">船田立替合計</span><span style="color:var(--sky);font-weight:700">'+yen(fn)+'</span></div>';
       h+='</div>';
     }
+    // 関プセクション
+    if(KANPU_MODE){
+      var kanpuRows="";
+      kanpuE.forEach(function(e){kanpuRows+=expRowHtml(e);});
+      h+='<div class="card" style="border-color:var(--warn)">'
+        +'<div class="ch">🔶 関プ経費<span style="font-size:11px;font-weight:400;color:var(--warn);margin-left:6px">独立（利益計算に含まない）</span></div>'
+        +(kanpuE.length>0
+          ?'<div class="exp-list">'+kanpuRows+'</div>'
+           +'<div class="exp-total">関プ経費合計<span style="color:var(--warn)">'+yen(c.kanpuTotal)+'</span></div>'
+          :'<div class="empty">関プ経費なし</div>')
+        +'</div>';
+    }
 
   }else if(expSubTab==="区分×科目"){
-    if(expenses.length===0){
+    if(mainE.length===0){
       h+='<div class="card"><div class="empty">経費データがありません</div></div>';
     }else{
       var ctHead="<thead><tr><th>勘定科目</th>";
-      KUBUN.forEach(function(ku){ctHead+="<th>"+ku+"</th>";});
+      crossKubun.forEach(function(ku){ctHead+="<th>"+ku+"</th>";});
       ctHead+="<th class=\"tc\">合計</th></tr></thead>";
       h+='<div class="card"><div class="ov"><table class="ct">'+ctHead+'<tbody>'+crossRows+crossFoot+'</tbody></table></div></div>';
     }
