@@ -946,6 +946,12 @@ function renderMasterTab(){
   });
   h+='<button class="btn-plus" onclick="openMasterModal(\'staff\',\'\')">＋ スタッフを追加</button></div>';
 
+  // データ移行
+  h+='<div class="card"><div class="ch">🔄 旧データ移行</div>'
+    +'<p style="font-size:13px;color:var(--text2);margin-bottom:12px">以前のアプリで入力した経費データを移行できます。</p>'
+    +'<button class="btn bp" onclick="migrateFromBudget()">📥 旧データから経費を移行する</button>'
+    +'</div>';
+
   // 外注
   h+='<div class="card"><div class="ch">🔗 外注マスタ</div>';
   if(master.outsource.length===0){h+='<div class="empty">まだ登録されていません</div>';}
@@ -1052,6 +1058,43 @@ function deleteMaster(type,id){
   else if(type==="staff") master.staff=master.staff.filter(function(x){return x.id!==id;});
   else if(type==="outsource") master.outsource=master.outsource.filter(function(x){return x.id!==id;});
   scheduleSaveMaster();render();
+}
+
+/* ===== 旧データ移行 ===== */
+// 旧monthキー("04"〜"03") → 新形式("YYYY-MM")
+// 04〜12 = 前年度(2025), 01〜03 = 今年度上半期(2026)
+function oldKeyToYM(k){
+  var m=parseInt(k,10);
+  var y=m>=4?2025:2026;
+  return y+"-"+k;
+}
+async function migrateFromBudget(){
+  if(!confirm("旧データ（budget テーブル）の経費を新アプリに移行します。\n既存の月次データは上書きされます。よろしいですか？"))return;
+  try{
+    setSync("busy","移行中...");
+    var r=await fetch(SB_URL+"/rest/v1/budget?id=eq.main&select=data",{headers:sbh()});
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    var rows=await r.json();
+    if(!rows.length||!rows[0].data){alert("旧データが見つかりませんでした");setSync("ok","同期済み");return;}
+    var old=rows[0].data;
+    var newMonthly=Object.assign({},monthly);
+    var count=0;
+    Object.keys(old).forEach(function(k){
+      var ym=oldKeyToYM(k);
+      var oldMd=old[k];
+      if(!newMonthly[ym]) newMonthly[ym]={income:{},talent:{},staff:{},outsource:{},expenses:[]};
+      // 経費を移行
+      if(oldMd.expenses&&oldMd.expenses.length){
+        newMonthly[ym].expenses=(newMonthly[ym].expenses||[]).concat(oldMd.expenses);
+        count+=oldMd.expenses.length;
+      }
+    });
+    monthly=newMonthly;
+    await fetch(SB_URL+"/rest/v1/monthly_v2",{method:"POST",headers:Object.assign({},sbh(),{"Prefer":"resolution=merge-duplicates,return=minimal"}),body:JSON.stringify({id:"main",data:monthly})});
+    setSync("ok","同期済み");
+    alert("移行完了！ "+count+"件の経費データを移行しました。");
+    render();
+  }catch(e){setSync("err","移行失敗");alert("エラー: "+e.message);}
 }
 
 /* ===== 初期化 ===== */
