@@ -393,7 +393,7 @@ function calcMonth(m){
   var outTotal=0,outByO={};
   master.outsource.forEach(function(o){
     var pts=+(md.outsource[o.id]||0);
-    var amt=Math.round(pts*o.rate/100);
+    var amt=calcOutAmt(o,pts);
     outByO[o.id]=amt;outTotal+=amt;
   });
   // 経費（関プは利益計算から除外）
@@ -630,11 +630,12 @@ function renderGaichuu(){
     var total=0;
     master.outsource.forEach(function(o){
       var pts=+(md.outsource[o.id]||0);
-      var amt=Math.round(pts*o.rate/100);
+      var amt=calcOutAmt(o,pts);
       total+=amt;
+      var fLabel=o.formula==="uriage"?'<span style="font-size:11px;color:var(--text2)">売上式×'+o.rate+'%</span>':o.rate+'%';
       h+='<tr><td class="fw">'+esc(o.name)+'</td>';
       h+='<td class="tr"><input type="number" value="'+(md.outsource[o.id]||"")+'" placeholder="0" style="width:90px;padding:5px 8px;font-size:14px;text-align:right" onchange="setOutPt(\''+o.id+'\',this.value)"></td>';
-      h+='<td class="tr" style="color:var(--text2)">'+o.rate+'%</td>';
+      h+='<td class="tr">'+fLabel+'</td>';
       h+='<td class="tr fw" style="color:var(--blue)" id="out-'+o.id+'">'+yen(amt)+'</td></tr>';
     });
     h+='<tr class="trow"><td colspan="3">外注報酬合計</td><td class="tr">'+yen(total)+'</td></tr>';
@@ -651,7 +652,7 @@ function setOutPt(oid,val){
   var o=master.outsource.find(function(x){return x.id===oid;});
   if(o){
     var el=document.getElementById("out-"+oid);
-    if(el) el.textContent=yen(Math.round((parseFloat(val)||0)*o.rate/100));
+    if(el) el.textContent=yen(calcOutAmt(o,parseFloat(val)||0));
   }
 }
 
@@ -992,9 +993,10 @@ function renderMasterTab(){
   if(master.outsource.length===0){h+='<div class="empty">まだ登録されていません</div>';}
   else{
     master.outsource.forEach(function(o){
+      var osub=o.formula==="uriage"?'売上計算式 × '+o.rate+'%':'報酬率 '+o.rate+'%';
       h+='<div class="master-item">'
-        +'<div class="master-info"><div class="master-name">'+esc(o.name)+'</div><div class="master-sub">報酬率 '+o.rate+'%</div></div>'
-        +'<span class="badge-pct">'+o.rate+'%</span>'
+        +'<div class="master-info"><div class="master-name">'+esc(o.name)+'</div><div class="master-sub">'+osub+'</div></div>'
+        +'<span class="badge-pct">'+(o.formula==="uriage"?'売上式':'シンプル')+'</span>'
         +'<div class="master-actions">'
         +'<button class="btn bd" onclick="openMasterModal(\'outsource\',\''+o.id+'\')">編集</button>'
         +'<button class="btn bs" onclick="deleteMaster(\'outsource\',\''+o.id+'\')">削除</button>'
@@ -1034,8 +1036,17 @@ function openMasterModal(type,id){
       +'<div class="mrow" id="mm-amount-row"><label id="mm-amount-label">'+(s&&s.type==="hourly"?"時給（円）":"月額固定（円）")+'</label><input type="number" id="mm-amount" value="'+(s&&s.amount?s.amount:"")+'"></div>';
   }else if(type==="outsource"){
     var o=id?master.outsource.find(function(x){return x.id===id;}):{};
+    var oFormula=o&&o.formula?o.formula:"simple";
     body='<div class="mrow"><label>外注先名</label><input type="text" id="mm-name" value="'+(o&&o.name?esc(o.name):"")+'" placeholder="例: 大輔"></div>'
-      +'<div class="mrow"><label>報酬率（%）</label><input type="number" id="mm-rate" value="'+(o&&o.rate?o.rate:"")+'"></div>';
+      +'<div class="mrow"><label>計算タイプ</label>'
+      +'<select id="mm-formula" onchange="updateOutModal()">'
+      +'<option value="simple"'+(oFormula==="simple"?" selected":"")+'>シンプル（ポイント × 率%）</option>'
+      +'<option value="uriage"'+(oFormula==="uriage"?" selected":"")+'>売上計算式（pt × 0.57÷1.05×1.1 × 率%）</option>'
+      +'</select></div>'
+      +'<div class="mrow"><label id="mm-rate-label">'+(oFormula==="uriage"?"独自率（%）":"報酬率（%）")+'</label><input type="number" id="mm-rate" value="'+(o&&o.rate?o.rate:"")+'"></div>'
+      +'<div id="mm-formula-preview" style="font-size:12px;color:var(--text2);background:var(--bg2);padding:8px 10px;border-radius:var(--r);margin-top:4px">'
+      +(oFormula==="uriage"?'計算例：10,000pt → ¥'+Math.round(10000*0.57/1.05*1.1*(o&&o.rate?o.rate:98)/100).toLocaleString():'計算例：10,000pt × '+(o&&o.rate?o.rate:"?")+'% = ¥'+Math.round(10000*(o&&o.rate?o.rate:0)/100).toLocaleString())
+      +'</div>';
   }
   document.getElementById("masterModalBody").innerHTML=body;
   document.getElementById("masterOverlay").classList.add("show");
@@ -1044,6 +1055,21 @@ function updateStaffModal(){
   var t=document.getElementById("mm-type").value;
   var lbl=document.getElementById("mm-amount-label");
   if(lbl) lbl.textContent=t==="hourly"?"時給（円）":"月額固定（円）";
+}
+function updateOutModal(){
+  var f=(document.getElementById("mm-formula")||{}).value||"simple";
+  var r=parseFloat((document.getElementById("mm-rate")||{}).value)||0;
+  var lbl=document.getElementById("mm-rate-label");
+  if(lbl) lbl.textContent=f==="uriage"?"独自率（%）":"報酬率（%）";
+  var prev=document.getElementById("mm-formula-preview");
+  if(prev){
+    if(f==="uriage") prev.textContent="計算例：10,000pt → ¥"+Math.round(10000*0.57/1.05*1.1*r/100).toLocaleString();
+    else prev.textContent="計算例：10,000pt × "+r+"% = ¥"+Math.round(10000*r/100).toLocaleString();
+  }
+}
+function calcOutAmt(o,pts){
+  if(o.formula==="uriage") return Math.round(pts*0.57/1.05*1.1*o.rate/100);
+  return Math.round(pts*o.rate/100);
 }
 function closeMasterModal(){document.getElementById("masterOverlay").classList.remove("show");}
 function saveMasterModal(){
@@ -1077,10 +1103,11 @@ function saveMasterModal(){
     }
   }else if(type==="outsource"){
     var orate=parseFloat((document.getElementById("mm-rate")||{}).value)||0;
+    var oformula=(document.getElementById("mm-formula")||{}).value||"simple";
     if(id){
-      master.outsource=master.outsource.map(function(o){return o.id===id?Object.assign({},o,{name:name,rate:orate}):o;});
+      master.outsource=master.outsource.map(function(o){return o.id===id?Object.assign({},o,{name:name,rate:orate,formula:oformula}):o;});
     }else{
-      master.outsource=master.outsource.concat([{id:uid(),name:name,rate:orate}]);
+      master.outsource=master.outsource.concat([{id:uid(),name:name,rate:orate,formula:oformula}]);
     }
   }
 
