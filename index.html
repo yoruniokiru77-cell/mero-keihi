@@ -642,6 +642,25 @@ function renderGaichuu(){
       h+='<td class="tr"><input type="number" value="'+(md.outsource[o.id]||"")+'" placeholder="0" style="width:90px;padding:5px 8px;font-size:14px;text-align:right" onchange="setOutPt(\''+o.id+'\',this.value)"></td>';
       h+='<td class="tr">'+fLabel+'</td>';
       h+='<td class="tr fw" style="color:var(--blue)" id="out-'+o.id+'">'+yen(amt)+'</td></tr>';
+      // 業務委託タレント一覧
+      var linked=master.talents.filter(function(t){return t.outsourceId===o.id;});
+      if(linked.length>0){
+        linked.forEach(function(t){
+          var tamt=0;
+          var tmd=getMonth(currentMonth);
+          (t.platforms||[]).forEach(function(pid){
+            var p=master.platforms.find(function(x){return x.id===pid;});
+            if(!p)return;
+            var entry=((tmd.talent||{})[t.id]||{})[pid]||{pts:0,daily:0};
+            var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
+            tamt+=Math.round((+(entry.pts||0)-+(entry.daily||0))*rate/100);
+          });
+          h+='<tr style="background:var(--blue-bg)"><td style="padding-left:20px;font-size:13px;color:var(--text2)">└ '+esc(t.name)+(t.realName?' ('+esc(t.realName)+')':'')+'</td>'
+            +'<td colspan="2" style="font-size:12px;color:var(--text2);text-align:right">タレント報酬</td>'
+            +'<td class="tr fw" style="color:var(--blue)">'+yen(tamt)+'</td></tr>';
+          total+=tamt;
+        });
+      }
     });
     h+='<tr class="trow"><td colspan="3">外注報酬合計</td><td class="tr">'+yen(total)+'</td></tr>';
     h+='</tbody></table>';
@@ -970,8 +989,10 @@ function renderMasterTab(){
   else{
     master.talents.forEach(function(t){
       var pNames=(t.platforms||[]).map(function(pid){var p=master.platforms.find(function(x){return x.id===pid;});return p?p.name:"?";}).join("、");
+      var oName=t.outsourceId?(function(){var o=master.outsource.find(function(x){return x.id===t.outsourceId;});return o?"委託先: "+o.name:"";})():"";
       h+='<div class="master-item">'
-        +'<div class="master-info"><div class="master-name">'+esc(t.name)+(t.realName?'<span style="font-size:12px;color:var(--text2);font-weight:400;margin-left:6px">'+esc(t.realName)+'</span>':'')+'</div><div class="master-sub">'+(pNames||"媒体未設定")+'</div></div>'
+        +'<div class="master-info"><div class="master-name">'+esc(t.name)+(t.realName?'<span style="font-size:12px;color:var(--text2);font-weight:400;margin-left:6px">'+esc(t.realName)+'</span>':'')+'</div>'
+        +'<div class="master-sub">'+(pNames||"媒体未設定")+(oName?' / <span style="color:var(--blue)">'+esc(oName)+'</span>':'')+'</div></div>'
         +'<div class="master-actions">'
         +'<button class="btn bd" onclick="openMasterModal(\'talent\',\''+t.id+'\')">編集</button>'
         +'<button class="btn bs" onclick="deleteMaster(\'talent\',\''+t.id+'\')">削除</button>'
@@ -1038,6 +1059,10 @@ function openMasterModal(type,id){
     var t=id?master.talents.find(function(x){return x.id===id;}):{};
     body='<div class="mrow"><label>タレント名（源氏名）</label><input type="text" id="mm-name" value="'+(t&&t.name?esc(t.name):"")+'" placeholder="例: さくら"></div>'
       +'<div class="mrow"><label>本名</label><input type="text" id="mm-realname" value="'+(t&&t.realName?esc(t.realName):"")+'" placeholder="例: 山田 花子"></div>'
+      +'<div class="mrow"><label>業務委託先<span style="font-size:11px;color:var(--text3);margin-left:6px">任意</span></label>'
+      +'<select id="mm-outsource"><option value="">なし</option>'
+      +master.outsource.map(function(o){return'<option value="'+o.id+'"'+(t&&t.outsourceId===o.id?' selected':'')+'>'+esc(o.name)+'</option>';}).join("")
+      +'</select></div>'
       +'<div class="mrow"><label>利用媒体と料率</label><div style="display:flex;flex-direction:column;gap:10px;margin-top:8px" id="mm-platforms">';
     master.platforms.forEach(function(p){
       var checked=t&&t.platforms&&t.platforms.indexOf(p.id)>=0;
@@ -1134,15 +1159,16 @@ function saveMasterModal(){
   }else if(type==="talent"){
     var platforms=Array.from(document.querySelectorAll("#mm-platforms button")).filter(function(b){return b.style.background==='var(--blue)';}).map(function(b){return b.dataset.pid;});
     var realName=(document.getElementById("mm-realname")||{}).value||"";
+    var outsourceId=(document.getElementById("mm-outsource")||{}).value||"";
     var rates={};
     document.querySelectorAll("#mm-platforms input[data-rate-pid]").forEach(function(el){
       var v=parseFloat(el.value);
       if(!isNaN(v)&&v>0) rates[el.dataset.ratePid]=v;
     });
     if(id){
-      master.talents=master.talents.map(function(t){return t.id===id?Object.assign({},t,{name:name,realName:realName,platforms:platforms,rates:rates}):t;});
+      master.talents=master.talents.map(function(t){return t.id===id?Object.assign({},t,{name:name,realName:realName,outsourceId:outsourceId,platforms:platforms,rates:rates}):t;});
     }else{
-      master.talents=master.talents.concat([{id:uid(),name:name,realName:realName,platforms:platforms,rates:rates}]);
+      master.talents=master.talents.concat([{id:uid(),name:name,realName:realName,outsourceId:outsourceId,platforms:platforms,rates:rates}]);
     }
   }else if(type==="staff"){
     var stype=(document.getElementById("mm-type")||{}).value||"fixed";
