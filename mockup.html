@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>mero 収支 — モックアップ</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#fff;--bg2:#f5f5f4;--bg3:#f0efed;--text:#1c1917;
+  --text2:#57534e;--text3:#a8a29e;--border:#e7e5e4;--border2:#d6d3d1;
+  --blue:#1d4ed8;--blue-bg:#eff6ff;--green:#15803d;
+  --red:#b91c1c;--warn:#b45309;--warn-bg:#fffbeb;
+  --r:8px;--rl:12px;--sh:0 1px 3px rgba(0,0,0,.08);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN",sans-serif;font-size:14px;color:var(--text);background:var(--bg3);min-height:100vh;overflow-x:hidden}
+
+/* ヘッダー */
+.hdr{background:var(--bg);border-bottom:1px solid var(--border);padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:100;box-shadow:var(--sh)}
+.htitle{font-size:15px;font-weight:700}
+.hmonth{display:flex;align-items:center;gap:8px}
+.hmonth select{font-size:13px;padding:4px 8px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text)}
+
+/* メインタブ */
+.main-tabs{background:var(--bg);border-bottom:2px solid var(--border);display:flex;overflow-x:auto;position:sticky;top:52px;z-index:99}
+.main-tab{padding:12px 16px;font-size:13px;font-weight:600;border:none;background:transparent;cursor:pointer;color:var(--text2);white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-2px}
+.main-tab.on{color:var(--blue);border-bottom-color:var(--blue)}
+
+/* ボディ */
+.body{max-width:640px;margin:0 auto;padding:16px 12px 80px}
+.card{background:var(--bg);border-radius:var(--rl);padding:16px;margin-bottom:14px;box-shadow:var(--sh);border:1px solid var(--border)}
+.ch{font-size:14px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:6px}
+
+/* 収支サマリー */
+.profit-hero{background:var(--bg);border-radius:var(--rl);padding:20px 16px;margin-bottom:14px;box-shadow:var(--sh);border:1px solid var(--border);text-align:center}
+.profit-label{font-size:12px;color:var(--text2);margin-bottom:4px}
+.profit-val{font-size:36px;font-weight:800;color:#15803d;margin-bottom:12px}
+.profit-val.neg{color:var(--red)}
+.summary-row{display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--border);font-size:14px}
+.summary-row:first-of-type{border-top:none}
+.sum-label{color:var(--text2)}
+.sum-val{font-weight:600}
+.sum-val.inc{color:var(--blue)}
+.sum-val.exp{color:var(--red)}
+
+/* KPIグリッド */
+.kgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px}
+.kpi{background:var(--bg);border-radius:var(--rl);padding:12px 14px;box-shadow:var(--sh);border:1px solid var(--border)}
+.klabel{font-size:11px;color:var(--text2);margin-bottom:4px}
+.kval{font-size:18px;font-weight:700}
+.kval.bl{color:var(--blue)}.kval.re{color:var(--red)}.kval.gr{color:#15803d}
+
+/* テーブル */
+.t{width:100%;border-collapse:collapse;font-size:14px}
+.t th{text-align:left;padding:8px 10px;color:var(--text2);font-weight:500;font-size:12px;border-bottom:1px solid var(--border);background:var(--bg2)}
+.t td{padding:10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.t tr:last-child td{border-bottom:none}
+.t .tr{text-align:right}.t .fw{font-weight:600}
+.t .trow td{background:var(--bg2)!important;font-weight:700;border-top:2px solid var(--border2)!important}
+
+/* バッジ */
+.badge{display:inline-block;font-size:11px;padding:2px 7px;border-radius:4px;font-weight:600}
+.badge.auto{background:var(--blue-bg);color:var(--blue)}
+.badge.fixed{background:#f0fdf4;color:#15803d}
+.badge.hourly{background:#fef9c3;color:#854d0e}
+.badge.pct{background:#fdf4ff;color:#7e22ce}
+
+/* 入力フォーム */
+.fg label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px;font-weight:500}
+input,select{width:100%;font-size:14px;font-family:inherit;padding:8px 10px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text)}
+input[type=number]{text-align:right}
+.fg{margin-bottom:10px}
+.btn{font-family:inherit;cursor:pointer;border-radius:var(--r);font-size:13px;font-weight:500;border:none;padding:8px 16px}
+.btn.primary{background:var(--blue);color:#fff}.btn.primary:hover{opacity:.85}
+.btn.danger{background:transparent;color:var(--red);padding:4px 8px}
+.btn.ghost{background:transparent;color:var(--text2);border:1px solid var(--border2)}
+
+/* タレント入力行 */
+.talent-row{border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:10px;background:var(--bg2)}
+.talent-name{font-size:13px;font-weight:600;margin-bottom:10px;color:var(--text)}
+.chat-row{display:grid;grid-template-columns:1fr 80px 70px 90px;gap:8px;align-items:center;margin-bottom:6px;font-size:13px}
+.chat-row .chat-name{color:var(--text2)}
+.chat-row .pct{color:var(--text3);font-size:12px;text-align:center}
+.chat-row .amount{text-align:right;font-weight:600;color:var(--blue)}
+.chat-total{display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:6px;padding-top:6px;font-size:13px;font-weight:600}
+
+/* スタッフ行 */
+.staff-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border)}
+.staff-row:last-child{border-bottom:none}
+.staff-name{flex:1;font-size:14px;font-weight:600}
+.staff-type{flex:0 0 auto}
+.staff-input{flex:0 0 100px}
+.staff-amount{flex:0 0 90px;text-align:right;font-weight:700;font-size:15px}
+
+/* 経費比率バー */
+.pct-bar-wrap{margin-top:4px}
+.pct-bar-bg{background:var(--bg3);border-radius:4px;height:4px;overflow:hidden;margin-top:3px}
+.pct-bar-fill{height:100%;border-radius:4px;background:var(--blue)}
+.pct-label{font-size:11px;color:var(--text3);text-align:right}
+
+/* マスタ設定 */
+.master-item{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--border)}
+.master-item:last-child{border-bottom:none}
+.master-name{flex:1;font-size:14px}
+.master-val{font-size:14px;font-weight:600;color:var(--blue)}
+.master-edit{color:var(--text3);font-size:12px;cursor:pointer}
+
+/* ページ切替 */
+.screens > div{display:none}.screens > div.on{display:block}
+
+/* 注記 */
+.mock-note{background:#fef9c3;border:1px solid #fde047;border-radius:var(--r);padding:8px 12px;font-size:12px;color:#854d0e;margin-bottom:14px}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <span class="htitle">mero 収支</span>
+  <div class="hmonth">
+    <select onchange="void 0"><option>2026年6月</option><option>2026年5月</option><option>2026年4月</option></select>
+  </div>
+</header>
+
+<nav class="main-tabs">
+  <button class="main-tab on" onclick="show('収支')">📊 収支</button>
+  <button class="main-tab" onclick="show('タレント')">🎤 タレント</button>
+  <button class="main-tab" onclick="show('スタッフ')">👥 スタッフ</button>
+  <button class="main-tab" onclick="show('外注')">🔗 外注</button>
+  <button class="main-tab" onclick="show('経費')">🧾 経費</button>
+  <button class="main-tab" onclick="show('マスタ')">⚙️ マスタ</button>
+</nav>
+
+<div class="body">
+<div class="screens">
+
+<!-- ========== 収支 ========== -->
+<div id="sc-収支" class="on">
+  <div class="mock-note">📌 モックアップ — 数値はダミーです</div>
+
+  <!-- 収支合計ヒーロー -->
+  <div class="profit-hero">
+    <div class="profit-label">6月 利益合計</div>
+    <div class="profit-val">¥1,240,500</div>
+    <div class="summary-row"><span class="sum-label">収入合計</span><span class="sum-val inc">¥3,820,000</span></div>
+    <div class="summary-row"><span class="sum-label">支出合計</span><span class="sum-val exp">−¥2,579,500</span></div>
+  </div>
+
+  <!-- KPI -->
+  <div class="kgrid">
+    <div class="kpi"><div class="klabel">収入</div><div class="kval bl">¥3.82M</div></div>
+    <div class="kpi"><div class="klabel">支出合計</div><div class="kval re">¥2.58M</div></div>
+    <div class="kpi"><div class="klabel">利益</div><div class="kval gr">¥1.24M</div></div>
+  </div>
+
+  <!-- 収入明細 -->
+  <div class="card">
+    <div class="ch">💹 収入明細</div>
+    <table class="t" style="margin-bottom:10px">
+      <thead>
+        <tr>
+          <th>媒体</th>
+          <th class="tr" style="width:100px">ポイント</th>
+          <th class="tr" style="width:60px">報酬率</th>
+          <th class="tr" style="width:100px">金額</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="fw">FANZA</td>
+          <td class="tr"><input type="number" value="80000" style="width:90px;padding:5px 8px;font-size:14px;text-align:right" oninput="calcInc()"></td>
+          <td class="tr" style="color:var(--text3);font-size:13px">30%</td>
+          <td class="tr fw" style="color:var(--blue)" id="fanza-amt">¥24,000</td>
+        </tr>
+        <tr>
+          <td class="fw">GGライブ</td>
+          <td class="tr"><input type="number" value="30000" style="width:90px;padding:5px 8px;font-size:14px;text-align:right" oninput="calcInc()"></td>
+          <td class="tr" style="color:var(--text3);font-size:13px">25%</td>
+          <td class="tr fw" style="color:var(--blue)" id="gg-amt">¥7,500</td>
+        </tr>
+        <tr>
+          <td class="fw">ひまチャ</td>
+          <td class="tr"><input type="number" value="10000" style="width:90px;padding:5px 8px;font-size:14px;text-align:right" oninput="calcInc()"></td>
+          <td class="tr" style="color:var(--text3);font-size:13px">28%</td>
+          <td class="tr fw" style="color:var(--blue)" id="hima-amt">¥2,800</td>
+        </tr>
+        <tr class="trow">
+          <td colspan="3" class="fw">収入合計</td>
+          <td class="tr" id="inc-total" style="font-size:16px;color:var(--blue)">¥34,300</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="font-size:12px;color:var(--text3)">⚙️ 媒体名・報酬率はマスタで管理</div>
+  </div>
+
+  <!-- 支出内訳 -->
+  <div class="card">
+    <div class="ch">📉 支出内訳</div>
+    <table class="t">
+      <thead><tr><th>項目</th><th class="tr">金額</th><th class="tr">支出比</th></tr></thead>
+      <tbody>
+        <tr><td>タレント報酬</td><td class="tr">¥1,150,000</td><td class="tr"><span style="color:var(--blue)">44.6%</span></td></tr>
+        <tr><td>スタッフ報酬</td><td class="tr">¥1,050,000</td><td class="tr"><span style="color:var(--blue)">40.7%</span></td></tr>
+        <tr><td>外注報酬</td><td class="tr">¥180,000</td><td class="tr"><span style="color:var(--blue)">7.0%</span></td></tr>
+        <tr><td>経費</td><td class="tr">¥199,500</td><td class="tr"><span style="color:var(--blue)">7.7%</span></td></tr>
+        <tr class="trow"><td>合計</td><td class="tr">¥2,579,500</td><td class="tr">100%</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ========== タレント ========== -->
+<div id="sc-タレント">
+  <div class="mock-note">📌 モックアップ — タレントとチャット媒体はマスタから読み込み</div>
+
+  <!-- タレント1 -->
+  <div class="card">
+    <div class="ch">🎤 タレント報酬入力</div>
+
+    <div class="talent-row">
+      <div class="talent-name">🌸 さくら</div>
+      <div class="chat-row" style="grid-template-columns:1fr 90px 60px 90px;font-size:12px;color:var(--text3);font-weight:600;margin-bottom:4px">
+        <span>媒体</span><span style="text-align:right">合計pt</span><span style="text-align:center">報酬率</span><span style="text-align:right">金額</span>
+      </div>
+      <div class="chat-row">
+        <span class="chat-name">FANZA</span>
+        <input type="number" value="10000" style="width:100%;text-align:right;padding:5px 8px;font-size:13px">
+        <span class="pct">30%</span>
+        <span class="amount">¥3,000</span>
+      </div>
+      <div class="chat-row">
+        <span class="chat-name">GGライブ</span>
+        <input type="number" value="5000" style="width:100%;text-align:right;padding:5px 8px;font-size:13px">
+        <span class="pct">25%</span>
+        <span class="amount">¥1,250</span>
+      </div>
+      <div class="chat-row">
+        <span class="chat-name">日払い控除</span>
+        <input type="number" value="2000" style="width:100%;text-align:right;padding:5px 8px;font-size:13px;border-color:var(--warn)">
+        <span class="pct" style="color:var(--red)">−</span>
+        <span class="amount" style="color:var(--red)">−¥600</span>
+      </div>
+      <div class="chat-total">
+        <span>さくら 合計</span>
+        <span style="color:var(--blue)">¥3,650</span>
+      </div>
+    </div>
+
+    <div class="talent-row">
+      <div class="talent-name">🌙 あかり</div>
+      <div class="chat-row" style="grid-template-columns:1fr 90px 60px 90px;font-size:12px;color:var(--text3);font-weight:600;margin-bottom:4px">
+        <span>媒体</span><span style="text-align:right">合計pt</span><span style="text-align:center">報酬率</span><span style="text-align:right">金額</span>
+      </div>
+      <div class="chat-row">
+        <span class="chat-name">FANZA</span>
+        <input type="number" value="8000" style="width:100%;text-align:right;padding:5px 8px;font-size:13px">
+        <span class="pct">30%</span>
+        <span class="amount">¥2,400</span>
+      </div>
+      <div class="chat-total">
+        <span>あかり 合計</span>
+        <span style="color:var(--blue)">¥2,400</span>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;border-top:2px solid var(--border2);padding-top:12px;margin-top:4px">
+      <span style="font-size:14px;font-weight:700">タレント報酬合計</span>
+      <span style="font-size:18px;font-weight:800;color:var(--red)">¥6,050</span>
+    </div>
+  </div>
+</div>
+
+<!-- ========== スタッフ ========== -->
+<div id="sc-スタッフ">
+  <div class="mock-note">📌 モックアップ — スタッフ情報はマスタから読み込み</div>
+  <div class="card">
+    <div class="ch">👥 スタッフ報酬</div>
+
+    <!-- 固定スタッフ -->
+    <div style="font-size:12px;color:var(--text2);font-weight:600;padding:4px 0 8px">固定報酬</div>
+    <div class="staff-row">
+      <div class="staff-name">関島 悠太</div>
+      <span class="badge fixed">固定</span>
+      <div class="staff-amount">¥400,000</div>
+    </div>
+    <div class="staff-row">
+      <div class="staff-name">船田 真史</div>
+      <span class="badge fixed">固定</span>
+      <div class="staff-amount">¥400,000</div>
+    </div>
+    <div class="staff-row">
+      <div class="staff-name">小澤 海誠</div>
+      <span class="badge fixed">固定</span>
+      <div class="staff-amount">¥550,000</div>
+    </div>
+    <div class="staff-row">
+      <div class="staff-name">坂場 健</div>
+      <span class="badge fixed">固定</span>
+      <div class="staff-amount">¥300,000</div>
+    </div>
+
+    <!-- 時給スタッフ -->
+    <div style="font-size:12px;color:var(--text2);font-weight:600;padding:12px 0 8px;border-top:1px solid var(--border);margin-top:4px">時給報酬</div>
+    <div class="staff-row">
+      <div class="staff-name">山田 花子<br><span style="font-size:12px;color:var(--text3)">時給 ¥1,500</span></div>
+      <span class="badge hourly">時給</span>
+      <div class="staff-input"><input type="number" placeholder="時間" value="80" style="font-size:13px;padding:6px 8px"></div>
+      <div class="staff-amount" style="color:var(--blue)">¥120,000</div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;border-top:2px solid var(--border2);padding-top:12px;margin-top:8px">
+      <span style="font-size:14px;font-weight:700">スタッフ報酬合計</span>
+      <span style="font-size:18px;font-weight:800;color:var(--red)">¥1,770,000</span>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 外注 ========== -->
+<div id="sc-外注">
+  <div class="mock-note">📌 モックアップ — 外注情報はマスタから読み込み</div>
+  <div class="card">
+    <div class="ch">🔗 外注報酬</div>
+
+    <table class="t">
+      <thead><tr><th>外注先</th><th class="tr">入力pt</th><th class="tr">報酬率</th><th class="tr">金額</th></tr></thead>
+      <tbody>
+        <tr>
+          <td style="font-weight:600">大輔</td>
+          <td class="tr"><input type="number" value="50000" style="width:90px;padding:5px 8px;font-size:13px;text-align:right"></td>
+          <td class="tr"><span style="color:var(--text2)">98%</span></td>
+          <td class="tr fw" style="color:var(--blue)">¥26,600</td>
+        </tr>
+        <tr>
+          <td style="font-weight:600">スカウト A</td>
+          <td class="tr"><input type="number" placeholder="0" style="width:90px;padding:5px 8px;font-size:13px;text-align:right"></td>
+          <td class="tr"><span style="color:var(--text2)">15%</span></td>
+          <td class="tr fw" style="color:var(--blue)">¥0</td>
+        </tr>
+        <tr class="trow"><td colspan="3">外注報酬合計</td><td class="tr">¥26,600</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ========== 経費 ========== -->
+<div id="sc-経費">
+  <div class="mock-note">📌 入力フォーム・領収書添付は現行と同じ仕様</div>
+
+  <!-- 経費入力フォーム -->
+  <div class="card">
+    <div class="ch">🧾 経費入力</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+      <div class="fg"><label>日付</label><input type="date" value="2026-06-07"></div>
+      <div class="fg"><label>区分</label>
+        <select><option>会社</option><option>関ケ</option><option>船田</option></select>
+      </div>
+      <div class="fg"><label>勘定科目</label>
+        <select><option>旅費交通費</option><option>通信費</option><option>消耗品費</option><option>会議費交際費</option></select>
+      </div>
+      <div class="fg"><label>金額</label><input type="number" placeholder="0"></div>
+      <div class="fg" style="grid-column:1/-1"><label>詳細 <span style="font-size:11px;color:var(--text3)">任意</span></label><input type="text" placeholder="省略可"></div>
+    </div>
+
+    <!-- 立替ボタン（現行と同じ） -->
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+      <span style="font-size:12px;color:var(--text2)">立替：</span>
+      <button style="font-size:12px;padding:5px 12px;border-radius:20px;border:1px solid #d6d3d1;background:#f5f5f4;cursor:pointer">関島立替</button>
+      <button style="font-size:12px;padding:5px 12px;border-radius:20px;border:1px solid #0369a1;background:#0369a1;color:#fff;cursor:pointer">船田立替 ✓</button>
+    </div>
+
+    <!-- 領収書添付（現行と同じ） -->
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <button style="display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border:1px dashed #d6d3d1;border-radius:8px;background:transparent;color:#57534e;font-size:13px;cursor:pointer">
+        📎 領収書を添付
+      </button>
+      <!-- 添付済みの例 -->
+      <div style="display:flex;align-items:center;gap:6px">
+        <div style="width:48px;height:48px;border-radius:8px;border:1px solid #e7e5e4;background:#f0efed;display:flex;align-items:center;justify-content:center;font-size:20px">🧾</div>
+        <button style="font-size:12px;color:#b91c1c;border:none;background:transparent;cursor:pointer">✕ 削除</button>
+      </div>
+      <span style="font-size:11px;color:var(--text3)">←添付済みの表示例</span>
+    </div>
+
+    <button class="btn primary" style="width:100%;padding:10px">＋ 追加</button>
+  </div>
+
+  <!-- 経費一覧 -->
+  <div class="card">
+    <div class="ch">📋 経費一覧</div>
+
+    <!-- フィルターバー -->
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      <button style="font-size:12px;padding:5px 12px;border-radius:20px;border:1px solid var(--blue);background:var(--blue);color:#fff;cursor:pointer">すべて (4)</button>
+      <button style="font-size:12px;padding:5px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer">会社 (2)</button>
+      <button style="font-size:12px;padding:5px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer">関ケ (1)</button>
+      <button style="font-size:12px;padding:5px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--bg2);color:var(--text2);cursor:pointer">船田 (1)</button>
+    </div>
+
+    <table class="t">
+      <thead><tr><th>日付</th><th>区分/科目</th><th>詳細</th><th class="tr">金額</th><th class="tr">支出比</th><th></th></tr></thead>
+      <tbody>
+        <tr>
+          <td>6/1</td>
+          <td>
+            <span class="badge" style="background:var(--bg2);color:var(--text2);border:1px solid var(--border);display:block;margin-bottom:2px">会社</span>
+            <span style="font-size:12px;color:var(--text2)">旅費交通費</span>
+          </td>
+          <td>電車代 🧾</td>
+          <td class="tr fw">¥25,320</td>
+          <td class="tr">
+            <span style="font-size:12px;color:var(--text3)">9.8%</span>
+            <div class="pct-bar-bg"><div class="pct-bar-fill" style="width:9.8%"></div></div>
+          </td>
+          <td style="white-space:nowrap">
+            <button style="background:none;border:none;cursor:pointer;font-size:14px">✏️</button>
+            <button style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px">✕</button>
+          </td>
+        </tr>
+        <tr>
+          <td>6/3</td>
+          <td>
+            <span class="badge" style="background:#e0f2fe;color:#0369a1;border:1px solid #0369a1;display:block;margin-bottom:2px">船田</span>
+            <span style="font-size:12px;color:var(--text2)">通信費</span>
+          </td>
+          <td>携帯料金</td>
+          <td class="tr fw">¥8,500</td>
+          <td class="tr">
+            <span style="font-size:12px;color:var(--text3)">3.3%</span>
+            <div class="pct-bar-bg"><div class="pct-bar-fill" style="width:3.3%"></div></div>
+          </td>
+          <td style="white-space:nowrap">
+            <button style="background:none;border:none;cursor:pointer;font-size:14px">✏️</button>
+            <button style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px">✕</button>
+          </td>
+        </tr>
+        <tr class="trow"><td colspan="3">経費合計</td><td class="tr">¥199,500</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ========== マスタ ========== -->
+<div id="sc-マスタ">
+  <div class="mock-note">📌 各マスタの設定画面 — ここで登録した内容が各入力画面に反映</div>
+
+  <!-- チャット媒体マスタ -->
+  <div class="card">
+    <div class="ch">📱 チャット媒体マスタ</div>
+    <div class="master-item">
+      <span class="master-name">FANZA</span>
+      <span class="badge pct">30%</span>
+      <span class="master-edit">✏️ 編集</span>
+    </div>
+    <div class="master-item">
+      <span class="master-name">GGライブ</span>
+      <span class="badge pct">25%</span>
+      <span class="master-edit">✏️ 編集</span>
+    </div>
+    <div class="master-item">
+      <span class="master-name">ひまチャ</span>
+      <span class="badge pct">28%</span>
+      <span class="master-edit">✏️ 編集</span>
+    </div>
+    <button class="btn primary" style="margin-top:10px;width:100%">＋ 媒体を追加</button>
+  </div>
+
+  <!-- タレントマスタ -->
+  <div class="card">
+    <div class="ch">🎤 タレントマスタ</div>
+    <div class="master-item" style="flex-direction:column;align-items:flex-start;gap:6px">
+      <div style="display:flex;width:100%;align-items:center;gap:8px">
+        <span class="master-name" style="font-weight:700">🌸 さくら</span>
+        <span class="master-edit">✏️ 編集</span>
+      </div>
+      <div style="font-size:12px;color:var(--text2);display:flex;gap:6px;flex-wrap:wrap">
+        <span class="badge pct">FANZA</span>
+        <span class="badge pct">GGライブ</span>
+        <span style="color:var(--text3)">← 利用媒体</span>
+      </div>
+    </div>
+    <div class="master-item" style="flex-direction:column;align-items:flex-start;gap:6px">
+      <div style="display:flex;width:100%;align-items:center;gap:8px">
+        <span class="master-name" style="font-weight:700">🌙 あかり</span>
+        <span class="master-edit">✏️ 編集</span>
+      </div>
+      <div style="font-size:12px;color:var(--text2);display:flex;gap:6px;flex-wrap:wrap">
+        <span class="badge pct">FANZA</span>
+      </div>
+    </div>
+    <button class="btn primary" style="margin-top:10px;width:100%">＋ タレントを追加</button>
+  </div>
+
+  <!-- スタッフマスタ -->
+  <div class="card">
+    <div class="ch">👥 スタッフマスタ</div>
+    <div class="master-item">
+      <span class="master-name">関島 悠太</span>
+      <span class="badge fixed">固定</span>
+      <span class="master-val">¥400,000</span>
+      <span class="master-edit">✏️</span>
+    </div>
+    <div class="master-item">
+      <span class="master-name">船田 真史</span>
+      <span class="badge fixed">固定</span>
+      <span class="master-val">¥400,000</span>
+      <span class="master-edit">✏️</span>
+    </div>
+    <div class="master-item">
+      <span class="master-name">小澤 海誠</span>
+      <span class="badge fixed">固定</span>
+      <span class="master-val">¥550,000</span>
+      <span class="master-edit">✏️</span>
+    </div>
+    <div class="master-item">
+      <span class="master-name">坂場 健</span>
+      <span class="badge fixed">固定</span>
+      <span class="master-val">¥300,000</span>
+      <span class="master-edit">✏️</span>
+    </div>
+    <div class="master-item">
+      <span class="master-name">山田 花子</span>
+      <span class="badge hourly">時給</span>
+      <span class="master-val">¥1,500/h</span>
+      <span class="master-edit">✏️</span>
+    </div>
+    <button class="btn primary" style="margin-top:10px;width:100%">＋ スタッフを追加</button>
+  </div>
+
+  <!-- 外注マスタ -->
+  <div class="card">
+    <div class="ch">🔗 外注マスタ</div>
+    <div class="master-item">
+      <span class="master-name">大輔</span>
+      <span class="badge pct">98%</span>
+      <span class="master-edit">✏️</span>
+    </div>
+    <div class="master-item">
+      <span class="master-name">スカウト A</span>
+      <span class="badge pct">15%</span>
+      <span class="master-edit">✏️</span>
+    </div>
+    <button class="btn primary" style="margin-top:10px;width:100%">＋ 外注を追加</button>
+  </div>
+</div>
+
+</div><!-- /screens -->
+</div><!-- /body -->
+
+<script>
+function show(name){
+  document.querySelectorAll('.screens > div').forEach(function(d){d.classList.remove('on')});
+  document.querySelectorAll('.main-tab').forEach(function(b){b.classList.remove('on')});
+  document.getElementById('sc-'+name).classList.add('on');
+  event.target.classList.add('on');
+}
+var RATES = {fanza:0.30, gg:0.25, hima:0.28};
+function calcInc(){
+  var rows = document.querySelectorAll('#sc-収支 .t tbody tr:not(.trow)');
+  var ids = ['fanza-amt','gg-amt','hima-amt'];
+  var rateKeys = ['fanza','gg','hima'];
+  var total = 0;
+  rows.forEach(function(row, i){
+    var pt = parseFloat(row.querySelector('input').value)||0;
+    var amt = Math.round(pt * RATES[rateKeys[i]]);
+    total += amt;
+    document.getElementById(ids[i]).textContent = '¥'+amt.toLocaleString('ja-JP');
+  });
+  document.getElementById('inc-total').textContent = '¥'+total.toLocaleString('ja-JP');
+}
+</script>
+</body>
+</html>
