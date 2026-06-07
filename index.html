@@ -1073,8 +1073,8 @@ function openMasterModal(type,id){
       +'</div>';
   }else if(type==="talent"){
     var t=id?master.talents.find(function(x){return x.id===id;}):{};
-    body='<div class="mrow"><label>タレント名（源氏名）</label><input type="text" id="mm-name" value="'+(t&&t.name?esc(t.name):"")+'" placeholder="例: さくら"></div>'
-      +'<div class="mrow"><label>本名</label><input type="text" id="mm-realname" value="'+(t&&t.realName?esc(t.realName):"")+'" placeholder="例: 山田 花子"></div>'
+    body='<div class="mrow"><label>本名</label><input type="text" id="mm-realname" value="'+(t&&t.realName?esc(t.realName):"")+'" placeholder="例: 山田 花子"></div>'
+      +'<div class="mrow"><label>源氏名</label><input type="text" id="mm-name" value="'+(t&&t.name?esc(t.name):"")+'" placeholder="例: さくら"></div>'
       +'<div class="mrow"><label>業務委託先<span style="font-size:11px;color:var(--text3);margin-left:6px">任意</span></label>'
       +'<select id="mm-outsource"><option value="">なし</option>'
       +master.outsource.map(function(o){return'<option value="'+o.id+'"'+(t&&t.outsourceId===o.id?' selected':'')+'>'+esc(o.name)+'</option>';}).join("")
