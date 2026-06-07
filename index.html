@@ -191,6 +191,11 @@ input[type=number]{text-align:right}
 .master-sub{font-size:12px;color:var(--text2);margin-top:2px}
 .master-actions{display:flex;gap:4px}
 
+/* サブタブ */
+.subtabs{background:var(--bg);border-radius:var(--rl);display:flex;margin-bottom:12px;box-shadow:var(--sh);border:1px solid var(--border);overflow:hidden}
+.stab{flex:1;padding:10px 4px;font-size:13px;font-weight:600;border:none;background:transparent;cursor:pointer;color:var(--text2);font-family:inherit;border-bottom:2px solid transparent;transition:all .15s}
+.stab:hover{color:var(--text)}.stab.on{color:var(--blue);border-bottom-color:var(--blue);background:var(--blue-bg)}
+
 /* 空状態 */
 .empty{color:var(--text3);text-align:center;padding:24px 0;font-size:13px}
 
@@ -288,7 +293,7 @@ var master={platforms:[],talents:[],staff:[
 var monthly={};
 var currentMonth=(function(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");})();
 var currentTab="収支";
-var expFilter="all",expSort="asc";
+var expFilter="all",expSort="asc",expSubTab="入力";
 var expF={date:"",kubun:"会社",kamoku:"消耗品費",detail:"",amount:"",receiptUrl:"",receiptUploading:false,tatekae:""};
 var editId="",editRecUrl="",editTatekae="";
 var mModalType="",mModalId="";
@@ -742,42 +747,57 @@ function renderKeihi(){
   crossFoot+="<td class=\"tc\">"+yen(c.expTotal)+"</td></tr>";
 
   var h="";
-  // 入力フォーム
-  h+='<div class="card"><div class="ch">🧾 経費入力</div>'
-    +'<div class="ef">'
-    +'<div class="fg"><label>日付</label><input type="date" id="fd" value="'+esc(expF.date)+'" oninput="expF.date=this.value"></div>'
-    +'<div class="fg"><label>区分</label><select id="fk" onchange="expF.kubun=this.value">'+kubunOpts+'</select></div>'
-    +'<div class="fg"><label>勘定科目</label><select id="fm" onchange="expF.kamoku=this.value">'+kamokuOpts+'</select></div>'
-    +'<div class="fg"><label>詳細<span style="font-size:10px;color:var(--text3)"> 任意</span></label><input type="text" id="fdt" placeholder="省略可" value="'+esc(expF.detail)+'" oninput="expF.detail=this.value" onkeydown="if(event.key===\'Enter\')addExp()"></div>'
-    +'<div class="fg"><label>金額</label><input type="number" id="fa" placeholder="0" value="'+expF.amount+'" oninput="expF.amount=this.value" onkeydown="if(event.key===\'Enter\')addExp()"></div>'
-    +'<div class="fg" style="display:flex;align-items:flex-end"><button class="btn-add" onclick="addExp()">＋ 追加</button></div>'
-    +'</div>'
-    +tatekaeBar+recArea+'</div>';
+  // 合計バー（常に表示）
+  h+='<div class="pbar"><div><div style="font-size:15px;font-weight:700">経費合計</div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-top:2px">'+fmtMonth(currentMonth)+'</div></div>'
+    +'<span style="font-size:24px;font-weight:800;color:var(--red)">'+yen(c.expTotal)+'</span></div>';
 
-  // 一覧
-  h+='<div class="card"><div class="ch">📋 経費一覧</div>'
-    +fbar
-    +'<div class="exp-list">'+listHtml+'</div>'
-    +(filtered.length>0?'<div class="exp-total">'+(expFilter==="all"?"経費合計":expFilter+" 合計")+'<span>'+yen(filteredTotal)+'</span></div>':"")
-    +'</div>';
+  // サブタブ
+  var subTabs=["入力","一覧","区分×科目"];
+  h+='<div class="subtabs">';
+  subTabs.forEach(function(t){
+    h+='<button class="stab'+(expSubTab===t?" on":"")+'" onclick="setExpSubTab(\''+t+'\')">'+t+'</button>';
+  });
+  h+='</div>';
 
-  // クロス集計
-  if(expenses.length>0){
-    var ctHead="<thead><tr><th>勘定科目</th>";
-    KUBUN.forEach(function(ku){ctHead+="<th>"+ku+"</th>";});
-    ctHead+="<th class=\"tc\">合計</th></tr></thead>";
-    h+='<div class="card"><div class="ch">🏷 区分×勘定科目</div>'
-      +'<div class="ov"><table class="ct">'+ctHead+'<tbody>'+crossRows+crossFoot+'</tbody></table></div></div>';
-  }
+  // サブタブ別コンテンツ
+  if(expSubTab==="入力"){
+    h+='<div class="card">'
+      +'<div class="ef">'
+      +'<div class="fg"><label>日付</label><input type="date" id="fd" value="'+esc(expF.date)+'" oninput="expF.date=this.value"></div>'
+      +'<div class="fg"><label>区分</label><select id="fk" onchange="expF.kubun=this.value">'+kubunOpts+'</select></div>'
+      +'<div class="fg"><label>勘定科目</label><select id="fm" onchange="expF.kamoku=this.value">'+kamokuOpts+'</select></div>'
+      +'<div class="fg"><label>詳細<span style="font-size:10px;color:var(--text3)"> 任意</span></label><input type="text" id="fdt" placeholder="省略可" value="'+esc(expF.detail)+'" oninput="expF.detail=this.value" onkeydown="if(event.key===\'Enter\')addExp()"></div>'
+      +'<div class="fg"><label>金額</label><input type="number" id="fa" placeholder="0" value="'+expF.amount+'" oninput="expF.amount=this.value" onkeydown="if(event.key===\'Enter\')addExp()"></div>'
+      +'<div class="fg" style="display:flex;align-items:flex-end"><button class="btn-add" onclick="addExp()">＋ 追加</button></div>'
+      +'</div>'
+      +tatekaeBar+recArea+'</div>';
 
-  // 立替サマリー
-  var sk=expenses.filter(function(e){return e.tatekae==="関島";}).reduce(function(s,e){return s+(+e.amount||0);},0);
-  var fn=expenses.filter(function(e){return e.tatekae==="船田";}).reduce(function(s,e){return s+(+e.amount||0);},0);
-  if(sk>0||fn>0){
-    h+='<div class="card">';
-    if(sk>0) h+='<div class="sum-row"><span style="color:var(--purple);font-weight:600">関島立替合計</span><span style="color:var(--purple);font-weight:700">'+yen(sk)+'</span></div>';
-    if(fn>0) h+='<div class="sum-row"><span style="color:var(--sky);font-weight:600">船田立替合計</span><span style="color:var(--sky);font-weight:700">'+yen(fn)+'</span></div>';
-    h+='</div>';
+  }else if(expSubTab==="一覧"){
+    h+='<div class="card">'
+      +fbar
+      +'<div class="exp-list">'+listHtml+'</div>'
+      +(filtered.length>0?'<div class="exp-total">'+(expFilter==="all"?"経費合計":expFilter+" 合計")+'<span>'+yen(filteredTotal)+'</span></div>':"")
+      +'</div>';
+    // 立替サマリー
+    var sk=expenses.filter(function(e){return e.tatekae==="関島";}).reduce(function(s,e){return s+(+e.amount||0);},0);
+    var fn=expenses.filter(function(e){return e.tatekae==="船田";}).reduce(function(s,e){return s+(+e.amount||0);},0);
+    if(sk>0||fn>0){
+      h+='<div class="card">';
+      if(sk>0) h+='<div class="sum-row"><span style="color:var(--purple);font-weight:600">関島立替合計</span><span style="color:var(--purple);font-weight:700">'+yen(sk)+'</span></div>';
+      if(fn>0) h+='<div class="sum-row"><span style="color:var(--sky);font-weight:600">船田立替合計</span><span style="color:var(--sky);font-weight:700">'+yen(fn)+'</span></div>';
+      h+='</div>';
+    }
+
+  }else if(expSubTab==="区分×科目"){
+    if(expenses.length===0){
+      h+='<div class="card"><div class="empty">経費データがありません</div></div>';
+    }else{
+      var ctHead="<thead><tr><th>勘定科目</th>";
+      KUBUN.forEach(function(ku){ctHead+="<th>"+ku+"</th>";});
+      ctHead+="<th class=\"tc\">合計</th></tr></thead>";
+      h+='<div class="card"><div class="ov"><table class="ct">'+ctHead+'<tbody>'+crossRows+crossFoot+'</tbody></table></div></div>';
+    }
   }
 
   return h;
@@ -787,6 +807,7 @@ function renderKeihi2(){
 }
 function setExpFilter(k){expFilter=k;renderKeihi2();}
 function setExpSort(s){expSort=s;renderKeihi2();}
+function setExpSubTab(t){expSubTab=t;renderKeihi2();}
 
 function addExp(){
   var amt=parseFloat(String(expF.amount).replace(/,/g,""))||0;
