@@ -379,7 +379,8 @@ function calcMonth(m){
       if(!p)return;
       var entry=((md.talent[t.id]||{})[pid])||{pts:0,daily:0};
       var pts=+(entry.pts||0),daily=+(entry.daily||0);
-      tamt+=Math.round((pts-daily)*p.rate/100);
+      var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
+      tamt+=Math.round((pts-daily)*rate/100);
     });
     talByT[t.id]=tamt;talTotal+=tamt;
   });
@@ -518,12 +519,13 @@ function renderTalent(){
         if(!p)return;
         var entry=(tData[pid])||{pts:"",daily:""};
         var pts=+(entry.pts||0),daily=+(entry.daily||0);
-        var amt=Math.round((pts-daily)*p.rate/100);
+        var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
+        var amt=Math.round((pts-daily)*rate/100);
         tTotal+=amt;
         h+='<div class="chat-grid">';
         h+='<span style="font-size:14px;font-weight:500">'+esc(p.name)+'</span>';
         h+='<input type="number" value="'+(entry.pts||"")+'" placeholder="0" style="padding:5px 8px;font-size:14px;text-align:right" onchange="setTalentPt(\''+t.id+'\',\''+pid+'\',\'pts\',this.value)">';
-        h+='<span class="chat-pct">'+p.rate+'%</span>';
+        h+='<span class="chat-pct">'+rate+'%</span>';
         h+='<span class="chat-amt" id="ta-'+t.id+'-'+pid+'">'+yen(amt)+'</span>';
         h+='</div>';
         // 日払い控除
@@ -555,18 +557,20 @@ function setTalentPt(tid,pid,field,val){
   if(t&&p){
     var entry=md.talent[tid][pid];
     var pts=+(entry.pts||0),daily=+(entry.daily||0);
-    var amt=Math.round((pts-daily)*p.rate/100);
+    var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
+    var amt=Math.round((pts-daily)*rate/100);
     var el=document.getElementById("ta-"+tid+"-"+pid);
     if(el) el.textContent=yen(amt);
     var el2=document.getElementById("td-"+tid+"-"+pid);
-    if(el2) el2.textContent=daily>0?"−"+yen(Math.round(daily*p.rate/100)):"";
+    if(el2) el2.textContent=daily>0?"−"+yen(Math.round(daily*rate/100)):"";
     // タレント合計
     var tTotal=0;
     (t.platforms||[]).forEach(function(p2id){
       var pp=master.platforms.find(function(x){return x.id===p2id;});
       if(!pp)return;
       var e2=(md.talent[tid][p2id])||{pts:0,daily:0};
-      tTotal+=Math.round((+(e2.pts||0)-+(e2.daily||0))*pp.rate/100);
+      var r2=(t.rates&&t.rates[p2id]!=null)?t.rates[p2id]:pp.rate;
+      tTotal+=Math.round((+(e2.pts||0)-+(e2.daily||0))*r2/100);
     });
     var el3=document.getElementById("tt-"+tid);
     if(el3) el3.textContent=yen(tTotal);
@@ -1034,12 +1038,19 @@ function openMasterModal(type,id){
     var t=id?master.talents.find(function(x){return x.id===id;}):{};
     body='<div class="mrow"><label>タレント名（源氏名）</label><input type="text" id="mm-name" value="'+(t&&t.name?esc(t.name):"")+'" placeholder="例: さくら"></div>'
       +'<div class="mrow"><label>本名</label><input type="text" id="mm-realname" value="'+(t&&t.realName?esc(t.realName):"")+'" placeholder="例: 山田 花子"></div>'
-      +'<div class="mrow"><label>利用媒体</label><div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px" id="mm-platforms">';
+      +'<div class="mrow"><label>利用媒体と料率</label><div style="display:flex;flex-direction:column;gap:10px;margin-top:8px" id="mm-platforms">';
     master.platforms.forEach(function(p){
       var checked=t&&t.platforms&&t.platforms.indexOf(p.id)>=0;
-      body+='<button type="button" data-pid="'+p.id+'" onclick="togglePlatformBtn(this)"'
-        +' style="padding:7px 16px;border-radius:20px;border:2px solid '+(checked?'var(--blue)':'var(--border2)')+';background:'+(checked?'var(--blue)':'var(--bg)')+';color:'+(checked?'#fff':'var(--text2)')+';font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">'
-        +esc(p.name)+(p.formula==="uriage"?'':' '+p.rate+'%')+'</button>';
+      var customRate=t&&t.rates&&t.rates[p.id]!=null?t.rates[p.id]:"";
+      body+='<div style="display:flex;align-items:center;gap:10px">'
+        +'<button type="button" data-pid="'+p.id+'" onclick="togglePlatformBtn(this)"'
+        +' style="padding:7px 16px;border-radius:20px;border:2px solid '+(checked?'var(--blue)':'var(--border2)')+';background:'+(checked?'var(--blue)':'var(--bg)')+';color:'+(checked?'#fff':'var(--text2)')+';font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap">'
+        +esc(p.name)+'</button>'
+        +'<div style="display:flex;align-items:center;gap:4px;font-size:13px;color:var(--text2)">'
+        +'<input type="number" data-rate-pid="'+p.id+'" value="'+customRate+'" placeholder="'+p.rate+'" style="width:70px;padding:5px 8px;font-size:14px;text-align:right">%'
+        +'<span style="font-size:11px;color:var(--text3)">未入力='+p.rate+'%</span>'
+        +'</div>'
+        +'</div>';
     });
     if(master.platforms.length===0) body+='<span style="font-size:12px;color:var(--text3)">先に媒体を登録してください</span>';
     body+='</div></div>';
@@ -1123,10 +1134,15 @@ function saveMasterModal(){
   }else if(type==="talent"){
     var platforms=Array.from(document.querySelectorAll("#mm-platforms button")).filter(function(b){return b.style.background==='var(--blue)';}).map(function(b){return b.dataset.pid;});
     var realName=(document.getElementById("mm-realname")||{}).value||"";
+    var rates={};
+    document.querySelectorAll("#mm-platforms input[data-rate-pid]").forEach(function(el){
+      var v=parseFloat(el.value);
+      if(!isNaN(v)&&v>0) rates[el.dataset.ratePid]=v;
+    });
     if(id){
-      master.talents=master.talents.map(function(t){return t.id===id?Object.assign({},t,{name:name,realName:realName,platforms:platforms}):t;});
+      master.talents=master.talents.map(function(t){return t.id===id?Object.assign({},t,{name:name,realName:realName,platforms:platforms,rates:rates}):t;});
     }else{
-      master.talents=master.talents.concat([{id:uid(),name:name,realName:realName,platforms:platforms}]);
+      master.talents=master.talents.concat([{id:uid(),name:name,realName:realName,platforms:platforms,rates:rates}]);
     }
   }else if(type==="staff"){
     var stype=(document.getElementById("mm-type")||{}).value||"fixed";
