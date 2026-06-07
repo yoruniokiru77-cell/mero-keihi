@@ -367,7 +367,7 @@ function calcMonth(m){
   var incTotal=0,incByP={};
   master.platforms.forEach(function(p){
     var pts=+(md.income[p.id]||0);
-    var amt=Math.round(pts*p.rate/100);
+    var amt=calcIncAmt(p,pts);
     incByP[p.id]=amt;incTotal+=amt;
   });
   // タレント報酬
@@ -459,7 +459,8 @@ function renderShuushi(){
       var pts=getMonth(currentMonth).income[p.id]||"";
       h+='<tr><td class="fw">'+esc(p.name)+'</td>';
       h+='<td class="tr"><input type="number" value="'+pts+'" placeholder="0" style="width:90px;padding:5px 8px;font-size:14px;text-align:right" onchange="setIncomePt(\''+p.id+'\',this.value)" oninput="setIncomePt(\''+p.id+'\',this.value)"></td>';
-      h+='<td class="tr" style="color:var(--text2)">'+p.rate+'%</td>';
+      var pLabel=p.formula==="uriage"?'<span style="font-size:11px;color:var(--text2)">売上式</span>':p.rate+'%';
+      h+='<td class="tr">'+pLabel+'</td>';
       h+='<td class="tr fw" style="color:var(--blue)" id="inc-amt-'+p.id+'">'+yen(c.incByP[p.id]||0)+'</td></tr>';
     });
     h+='<tr class="trow"><td colspan="3" class="fw">収入合計</td><td class="tr" id="inc-total">'+yen(c.incTotal)+'</td></tr>';
@@ -485,7 +486,7 @@ function setIncomePt(pid,val){
   // インプレース更新
   var p=master.platforms.find(function(x){return x.id===pid;});
   if(p){
-    var amt=Math.round((parseFloat(val)||0)*p.rate/100);
+    var amt=calcIncAmt(p,parseFloat(val)||0);
     var el=document.getElementById("inc-amt-"+pid);
     if(el) el.textContent=yen(amt);
     // 合計再計算
@@ -947,8 +948,10 @@ function renderMasterTab(){
   if(master.platforms.length===0){h+='<div class="empty">まだ登録されていません</div>';}
   else{
     master.platforms.forEach(function(p){
+      var psub=p.formula==="uriage"?'売上計算式（×0.57÷1.05×1.1）':'報酬率 '+p.rate+'%';
       h+='<div class="master-item">'
-        +'<div class="master-info"><div class="master-name">'+esc(p.name)+'</div><div class="master-sub">報酬率 '+p.rate+'%</div></div>'
+        +'<div class="master-info"><div class="master-name">'+esc(p.name)+'</div><div class="master-sub">'+psub+'</div></div>'
+        +'<span class="badge-pct">'+(p.formula==="uriage"?'売上式':p.rate+'%')+'</span>'
         +'<div class="master-actions">'
         +'<button class="btn bd" onclick="openMasterModal(\'platform\',\''+p.id+'\')">編集</button>'
         +'<button class="btn bs" onclick="deleteMaster(\'platform\',\''+p.id+'\')">削除</button>'
@@ -1016,8 +1019,17 @@ function openMasterModal(type,id){
   var body="";
   if(type==="platform"){
     var p=id?master.platforms.find(function(x){return x.id===id;}):{};
-    body='<div class="mrow"><label>媒体名</label><input type="text" id="mm-name" value="'+(p&&p.name?esc(p.name):"")+'" placeholder="例: FANZA"></div>'
-      +'<div class="mrow"><label>報酬率（%）</label><input type="number" id="mm-rate" value="'+(p&&p.rate?p.rate:"")+'"></div>';
+    var pFormula=p&&p.formula?p.formula:"simple";
+    body='<div class="mrow"><label>項目名</label><input type="text" id="mm-name" value="'+(p&&p.name?esc(p.name):"")+'" placeholder="例: FANZA / 売上収入"></div>'
+      +'<div class="mrow"><label>計算タイプ</label>'
+      +'<select id="mm-formula" onchange="updateIncModal()">'
+      +'<option value="simple"'+(pFormula==="simple"?" selected":"")+'>シンプル（ポイント × 率%）</option>'
+      +'<option value="uriage"'+(pFormula==="uriage"?" selected":"")+'>売上計算式（pt × 0.57÷1.05×1.1）</option>'
+      +'</select></div>'
+      +'<div class="mrow" id="mm-rate-wrap"><label>報酬率（%）</label><input type="number" id="mm-rate" value="'+(p&&p.rate!=null?p.rate:"")+'"></div>'
+      +'<div id="mm-inc-preview" style="font-size:12px;color:var(--text2);background:var(--bg2);padding:8px 10px;border-radius:var(--r);margin-top:4px">'
+      +(pFormula==="uriage"?'計算例：10,000pt → ¥'+Math.round(10000*0.57/1.05*1.1).toLocaleString():'計算例：10,000pt × '+(p&&p.rate?p.rate:"?")+' % = ¥'+Math.round(10000*(p&&p.rate||0)/100).toLocaleString())
+      +'</div>';
   }else if(type==="talent"){
     var t=id?master.talents.find(function(x){return x.id===id;}):{};
     body='<div class="mrow"><label>タレント名（源氏名）</label><input type="text" id="mm-name" value="'+(t&&t.name?esc(t.name):"")+'" placeholder="例: さくら"></div>'
@@ -1071,6 +1083,21 @@ function calcOutAmt(o,pts){
   if(o.formula==="uriage") return Math.round(pts*0.57/1.05*1.1*o.rate/100);
   return Math.round(pts*o.rate/100);
 }
+function calcIncAmt(p,pts){
+  if(p.formula==="uriage") return Math.round(pts*0.57/1.05*1.1);
+  return Math.round(pts*(p.rate||0)/100);
+}
+function updateIncModal(){
+  var f=(document.getElementById("mm-formula")||{}).value||"simple";
+  var r=parseFloat((document.getElementById("mm-rate")||{}).value)||0;
+  var wrap=document.getElementById("mm-rate-wrap");
+  if(wrap) wrap.style.display=f==="uriage"?"none":"block";
+  var prev=document.getElementById("mm-inc-preview");
+  if(prev){
+    if(f==="uriage") prev.textContent="計算例：10,000pt → ¥"+Math.round(10000*0.57/1.05*1.1).toLocaleString();
+    else prev.textContent="計算例：10,000pt × "+r+"% = ¥"+Math.round(10000*r/100).toLocaleString();
+  }
+}
 function closeMasterModal(){document.getElementById("masterOverlay").classList.remove("show");}
 function saveMasterModal(){
   var type=mModalType,id=mModalId;
@@ -1079,10 +1106,11 @@ function saveMasterModal(){
 
   if(type==="platform"){
     var rate=parseFloat((document.getElementById("mm-rate")||{}).value)||0;
+    var pformula=(document.getElementById("mm-formula")||{}).value||"simple";
     if(id){
-      master.platforms=master.platforms.map(function(p){return p.id===id?Object.assign({},p,{name:name,rate:rate}):p;});
+      master.platforms=master.platforms.map(function(p){return p.id===id?Object.assign({},p,{name:name,rate:rate,formula:pformula}):p;});
     }else{
-      master.platforms=master.platforms.concat([{id:uid(),name:name,rate:rate}]);
+      master.platforms=master.platforms.concat([{id:uid(),name:name,rate:rate,formula:pformula}]);
     }
   }else if(type==="talent"){
     var platforms=Array.from(document.querySelectorAll("#mm-platforms input:checked")).map(function(el){return el.value;});
