@@ -1273,7 +1273,7 @@ function buildNoticeHeader(dateStr,name,title,honorific){
     +'<div style="margin-bottom:16px"><div style="font-size:15px;font-weight:700">'+name+(honorific?'　御中':'')+'</div></div>';
 }
 function buildNoticeBody(pts,periodStr,base,up,subtotal,fee,total,tax,payDate){
-  var h='<div style="font-size:12px;margin-bottom:20px">平素は格別なるご高配を賜り厚く御礼申し上げます。<br>以下の通り、お支払いのご案内となります。今後とも宜しくお願い致します。</div>';
+  var h='';
   h+='<div style="border:2px solid #000;padding:12px 20px;margin-bottom:20px;text-align:center">'
     +'<div style="font-size:13px;margin-bottom:4px">お支払金額（税込）</div>'
     +'<div style="font-size:28px;font-weight:800">¥'+total.toLocaleString()+'</div>'
@@ -1420,7 +1420,6 @@ function openTalentNotice(tid){
     rows.push({name:esc(pl.name)+' '+m+'月分',pts:+(entry.pts||0),rate:rate,amt:amt});
   });
   var h=buildNoticeHeader(dateStr,name,'給料明細',false);
-  h+='<div style="font-size:12px;margin-bottom:20px">平素は格別なるご高配を賜り厚く御礼申し上げます。<br>以下の通り、お支払いのご案内となります。今後とも宜しくお願い致します。</div>';
   // 外注があれば後で加算するのでプレースホルダーIDを使う
   h+='<div id="notice-total-box" style="border:2px solid #000;padding:12px 20px;margin-bottom:20px;text-align:center">'
     +'<div style="font-size:13px;margin-bottom:4px">お支払金額</div>'
