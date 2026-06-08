@@ -1307,6 +1307,18 @@ function openTalentNotice(tid){
       +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right">¥'+r.amt.toLocaleString()+'</td></tr>';
   });
   h+='</tbody></table>';
+  // 外注報酬を合計に加算（表示なし）
+  if(t.outsourceId){
+    var o2=master.outsource.find(function(x){return x.id===t.outsourceId;});
+    if(o2){
+      var totalPts2=0;
+      (t.platforms||[]).forEach(function(pid){
+        var entry2=((md.talent||{})[t.id]||{})[pid]||{pts:0};
+        totalPts2+=+(entry2.pts||0);
+      });
+      grandTotal+=calcOutAmt(o2,totalPts2);
+    }
+  }
   h+='<div style="display:flex;justify-content:flex-end;margin-bottom:20px">'
     +'<table style="border-collapse:collapse;font-size:12px;min-width:260px">'
     +'<tr style="background:#f5f5f4;font-weight:700"><td style="padding:6px 12px;border:1px solid #ccc">合計</td>'
