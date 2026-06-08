@@ -1338,7 +1338,12 @@ function closePaymentNotice(){document.getElementById("noticeOverlay").classList
 function printNotice(){
   var content=document.getElementById("noticeBody").innerHTML;
   var w=window.open("","_blank","width=700,height=900");
-  w.document.write('<html><head><title>支払通知書</title><style>body{font-family:"メイリオ",sans-serif;margin:20px}@media print{body{margin:0}}</style></head><body>'+content+'<script>window.onload=function(){window.print();}<\/script></body></html>');
+  w.document.write('<html><head><title> </title><style>'
+    +'body{font-family:"メイリオ",sans-serif;margin:20px}'
+    +'@page{margin:0;size:A4}'
+    +'@media print{body{margin:15mm}header,footer{display:none}}'
+    +'</style></head><body>'+content
+    +'<script>window.onload=function(){window.print();}<\/script></body></html>');
   w.document.close();
 }
 function toggleOutDetail(id){
