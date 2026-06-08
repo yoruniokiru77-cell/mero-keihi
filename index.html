@@ -1156,7 +1156,116 @@ function renderMasterTab(){
   }
   h+='<button class="btn-plus" onclick="openMasterModal(\'outsource\',\'\')">＋ 外注を追加</button></div>';
 
+  // ブックマークレット
+  h+='<div class="card"><div class="ch">🔖 FANZAブックマークレット</div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:10px">FANZA管理画面の精算ページで実行すると、全タレントのポイントを一括取込できます。</div>'
+    +'<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:10px;margin-bottom:10px;display:flex;align-items:center;gap:8px">'
+    +'<span style="font-size:13px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">javascript:(function(){...})()</span>'
+    +'<button class="btn bd" onclick="copyBm()" style="white-space:nowrap;flex-shrink:0">📋 コピー</button>'
+    +'</div>'
+    +'<ol style="font-size:13px;color:var(--text2);margin:0;padding-left:18px;line-height:1.8">'
+    +'<li>上の「コピー」ボタンでコードをコピー</li>'
+    +'<li>ブラウザのブックマーク（お気に入り）を新規追加し、URLにペースト</li>'
+    +'<li>FANZA管理画面 → 精算ページを開く</li>'
+    +'<li>そのブックマークをクリックして実行</li>'
+    +'</ol>'
+    +'</div>';
+
   return h;
+}
+
+function copyBm(){
+  var code=getBmCode();
+  if(navigator.clipboard){navigator.clipboard.writeText(code).then(function(){showToast('コピーしました');}).catch(function(){fallbackCopy(code);});}
+  else{fallbackCopy(code);}
+}
+function fallbackCopy(t){
+  var ta=document.createElement('textarea');ta.value=t;ta.style.cssText='position:fixed;top:-9999px';
+  document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
+  showToast('コピーしました');
+}
+function showToast(msg){
+  var el=document.getElementById('toast');if(!el){el=document.createElement('div');el.id='toast';el.style.cssText='position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:8px 18px;border-radius:20px;font-size:13px;z-index:9999;transition:opacity .3s';document.body.appendChild(el);}
+  el.textContent=msg;el.style.opacity='1';clearTimeout(el._t);el._t=setTimeout(function(){el.style.opacity='0';},2000);
+}
+
+function getBmCode(){
+  var SB_URL_BM='https://ctwbhyqlpnmhfiizpgab.supabase.co';
+  var SB_KEY_BM='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0d2JoeXFscG5taGZpaXpwZ2FiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NTcyMzcsImV4cCI6MjA5NDIzMzIzN30.evN-i3bHm156X6gNLtFJQWIw-YCUyqyEigltG0UD5z0';
+  var code='(function(){'
+    +'var U=\''+SB_URL_BM+'\',K=\''+SB_KEY_BM+'\';'
+    +'if(document.getElementById(\'fz-bm\'))return;'
+    +'function H(){return{\'Content-Type\':\'application/json\',apikey:K,\'Authorization\':\'Bearer \'+K};}'
+    +'function parse(){'
+    +'var out=[];'
+    +'document.querySelectorAll(\'table tr\').forEach(function(r){'
+    +'var c=r.querySelectorAll(\'td\');if(c.length<5)return;'
+    +'var id=(c[0].textContent||\'\').trim();'
+    +'var pts=parseInt((c[4].textContent||\'\').replace(/[^0-9]/g,\'\'))||0;'
+    +'if(/^\\d{5,7}$/.test(id))out.push({charId:id,name:(c[1].textContent||\'\').trim(),pts:pts});'
+    +'});return out;}'
+    +'var now=new Date(),mo=now.getMonth()+1,yr=now.getFullYear();'
+    +'var fyS=(mo>=4)?yr:yr-1;'
+    +'var MK=[\'04\',\'05\',\'06\',\'07\',\'08\',\'09\',\'10\',\'11\',\'12\',\'01\',\'02\',\'03\'];'
+    +'var cur=String(mo).padStart(2,\'0\');'
+    +'var ov=document.createElement(\'div\');ov.id=\'fz-bm\';'
+    +'ov.style.cssText=\'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;font-family:sans-serif;font-size:14px\';'
+    +'var mSel=MK.map(function(k){var m=parseInt(k),y=(m>=4)?fyS:fyS+1;return\'<option value="\'+k+\'"\'+(k===cur?\' selected\':\'\')+\'>\'+y+\'年\'+m+\'月</option>\';}).join(\'\');'
+    +'ov.innerHTML=\'<div style="background:#fff;border-radius:12px;padding:24px;width:360px;max-width:92vw;box-shadow:0 20px 60px rgba(0,0,0,.3)">\''
+    +'+\'<div style="font-size:17px;font-weight:700;margin-bottom:16px">📥 FANZAポイント一括取込</div>\''
+    +'+\'<div style="margin-bottom:12px"><label style="font-size:12px;color:#666;display:block;margin-bottom:4px">対象月</label>\''
+    +'+\'<select id="fz-mo" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px">\'+mSel+\'</select></div>\''
+    +'+\'<div id="fz-pl" style="margin-bottom:12px"><label style="font-size:12px;color:#666">媒体（読込中...）</label></div>\''
+    +'+\'<div id="fz-pv" style="font-size:13px;color:#666;background:#f5f5f5;border-radius:6px;padding:8px 12px;margin-bottom:16px">解析中...</div>\''
+    +'+\'<div style="display:flex;gap:8px">\''
+    +'+\'<button id="fz-ok" style="flex:1;padding:10px;background:#0066cc;color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer" disabled>取込む</button>\''
+    +'+\'<button id="fz-cl" style="flex:1;padding:10px;background:#eee;color:#333;border:none;border-radius:6px;font-size:14px;cursor:pointer">キャンセル</button>\''
+    +'+\'</div><div id="fz-msg" style="margin-top:12px;font-size:13px;text-align:center;min-height:18px"></div></div>\';'
+    +'document.body.appendChild(ov);'
+    +'document.getElementById(\'fz-cl\').onclick=function(){document.body.removeChild(ov);};'
+    +'var pd=parse();'
+    +'document.getElementById(\'fz-pv\').textContent=\'ページから \'+pd.length+\' 件検出\';'
+    +'var MD,MY;'
+    +'Promise.all(['
+    +'fetch(U+\'/rest/v1/master?id=eq.main&select=data\',{headers:H()}).then(function(r){return r.json();})'
+    +',fetch(U+\'/rest/v1/monthly_v2?id=eq.main&select=data\',{headers:H()}).then(function(r){return r.json();})'
+    +']).then(function(rs){'
+    +'MD=(rs[0][0]&&rs[0][0].data)||{platforms:[],talents:[]};'
+    +'MY=(rs[1][0]&&rs[1][0].data)||{};'
+    +'var ps=(MD.platforms||[]).map(function(p){var s=/fanza/i.test(p.name)?\' selected\':\'\';return\'<option value="\'+p.id+\'"\'+s+\'>\'+p.name+\'</option>\';}).join(\'\');'
+    +'document.getElementById(\'fz-pl\').innerHTML=\'<label style="font-size:12px;color:#666;display:block;margin-bottom:4px">媒体</label><select id="fz-pid" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px">\'+ps+\'</select>\';'
+    +'document.getElementById(\'fz-ok\').disabled=false;'
+    +'document.getElementById(\'fz-ok\').onclick=function(){'
+    +'var mk=document.getElementById(\'fz-mo\').value;'
+    +'var pid=document.getElementById(\'fz-pid\').value;'
+    +'var msg=document.getElementById(\'fz-msg\');'
+    +'if(!pid){msg.style.color=\'#c00\';msg.textContent=\'媒体を選択してください\';return;}'
+    +'var md=JSON.parse(JSON.stringify(MY[mk]||{income:{},talent:{},staff:{},outsource:{},expenses:[]}));'
+    +'if(!md.talent)md.talent={};'
+    +'var ok=0,sk=[],byName=0;'
+    +'function normN(s){return (s||\'\').replace(/[\\s　]/g,\'\');}'
+    +'pd.forEach(function(row){'
+    +'var t=(MD.talents||[]).find(function(x){return x.fanzaCharId&&String(x.fanzaCharId)===String(row.charId);});'
+    +'if(!t){t=(MD.talents||[]).find(function(x){return x.realName&&normN(x.realName)===normN(row.name);});if(t)byName++;}'
+    +'if(!t){sk.push(row.name+\'(\'+row.charId+\')\');return;}'
+    +'if(!md.talent[t.id])md.talent[t.id]={};'
+    +'if(!md.talent[t.id][pid])md.talent[t.id][pid]={pts:0};'
+    +'md.talent[t.id][pid].pts=row.pts;ok++;'
+    +'});'
+    +'if(ok===0){msg.style.color=\'#c00\';msg.textContent=\'マッチなし。タレントマスタの本名（漢字）がFANZA名と一致しているか確認してください。スキップ: \'+sk.join(\', \');return;}'
+    +'var cp=Object.assign({},MY);cp[mk]=md;'
+    +'msg.style.color=\'#666\';msg.textContent=\'保存中...\';'
+    +'document.getElementById(\'fz-ok\').disabled=true;'
+    +'fetch(U+\'/rest/v1/monthly_v2\',{method:\'POST\',headers:Object.assign({},H(),{Prefer:\'resolution=merge-duplicates,return=minimal\'}),body:JSON.stringify({id:\'main\',data:cp})})'
+    +'.then(function(r){'
+    +'if(r.ok){msg.style.color=\'#080\';msg.textContent=\'✓ \'+ok+\'件保存完了\'+(byName?\' (名前一致\'+byName+\'件)\':\'\')+\' → アプリを再読込してください\'+(sk.length?\' / スキップ\'+sk.length+\'件\':\'\')+\'\\n\'+(sk.length?sk.join(\', \'):\'\');'
+    +'document.getElementById(\'fz-ok\').textContent=\'完了\';}'
+    +'else{r.text().then(function(t){msg.style.color=\'#c00\';msg.textContent=\'保存失敗: \'+r.status+\' \'+t;});document.getElementById(\'fz-ok\').disabled=false;}'
+    +'}).catch(function(e){msg.style.color=\'#c00\';msg.textContent=\'エラー: \'+e.message;document.getElementById(\'fz-ok\').disabled=false;});'
+    +'};'
+    +'}).catch(function(e){document.getElementById(\'fz-pl\').innerHTML=\'<div style="color:#c00;font-size:13px">読込失敗: \'+e.message+\'</div>\';});'
+    +'})();';
+  return 'javascript:'+encodeURIComponent(code);
 }
 
 /* マスタモーダル */
