@@ -599,8 +599,8 @@ function renderTalent(){
     h+='<div class="talent-total"><span>報酬合計</span>'
       +'<div style="display:flex;align-items:center;gap:10px">'
       +'<span style="color:var(--red)" id="tt-'+t.id+'">'+yen(tTotal)+'</span>'
-      +'<button class="btn be" onclick="openTalentNotice(\''+t.id+'\')" title="支払通知書">🖨️</button>'
-      +'<button class="btn be" onclick="sendLineNotice(\''+t.id+'\')" title="LINE送信" style="background:var(--blue);color:#fff">LINE</button>'
+      +'<button class="btn be" onclick="openTalentNotice(\''+t.id+'\')" title="支払通知書" style="background:#6c757d;color:#fff">PDF</button>'
+      +'<button class="btn be" onclick="sendLineNotice(\''+t.id+'\')" title="LINE送信" style="background:#06c755;color:#fff">LINE</button>'
       +'</div></div>';
     h+='</div>';
     grandTotal+=tTotal;
