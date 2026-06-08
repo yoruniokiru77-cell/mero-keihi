@@ -1273,7 +1273,6 @@ function openTalentNotice(tid){
   var periodStr=y+'年'+m+'月後半分';
   var payDate=y+'年'+(m+1>12?1:m+1)+'月20日';
   var name=t.realName||t.name;
-  console.log('DEBUG tid=',tid,'t.id=',t.id,'t.outsourceId=',t.outsourceId,'outsource ids=',master.outsource.map(function(o){return o.id;}));
   var rows=[],grandTotal=0;
   (t.platforms||[]).forEach(function(pid){
     var pl=master.platforms.find(function(x){return x.id===pid;});if(!pl)return;
