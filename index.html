@@ -167,12 +167,21 @@ input[type=number]{text-align:right}
 
 /* タレント入力 */
 .talent-card{border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:10px;background:var(--bg2)}
-.talent-name{font-size:15px;font-weight:700;margin-bottom:10px}
+.talent-name{font-size:15px;font-weight:700;margin-bottom:2px}
+.talent-outsource{font-size:12px;color:var(--text3);margin-bottom:10px}
 .chat-grid{display:grid;grid-template-columns:1fr 90px 54px 90px;gap:6px;align-items:center;margin-bottom:6px}
 .chat-hdr{font-size:11px;color:var(--text3);font-weight:600}
 .chat-pct{text-align:center;font-size:13px;color:var(--text2)}
-.chat-amt{text-align:right;font-weight:700;font-size:14px;color:var(--blue)}
+.chat-amt{text-align:right;font-weight:700;font-size:14px;color:var(--text)}
 .talent-total{display:flex;justify-content:space-between;border-top:1px solid var(--border);margin-top:8px;padding-top:8px;font-size:14px;font-weight:700}
+.daily-section{margin:6px 0 10px;padding:8px 10px;background:var(--bg);border-radius:var(--r);border:1px solid var(--border)}
+.daily-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;font-size:13px}
+.daily-row input[type=date]{flex:1;font-size:13px;padding:5px 8px}
+.daily-row input[type=number]{width:80px;font-size:13px;padding:5px 8px;text-align:right}
+.daily-add{font-size:12px;color:var(--blue);background:none;border:1px dashed var(--blue);border-radius:var(--r);padding:4px 10px;cursor:pointer;font-family:inherit;width:100%;margin-top:4px}
+.daily-add:hover{background:var(--blue-bg)}
+.daily-total{font-size:12px;color:var(--red);text-align:right;margin-top:4px;font-weight:600}
+.out-detail{overflow:hidden;transition:max-height .3s}
 
 /* スタッフ行 */
 .staff-row{display:flex;align-items:center;gap:10px;padding:12px 0;border-bottom:1px solid var(--border)}
@@ -377,8 +386,9 @@ function calcMonth(m){
     (t.platforms||[]).forEach(function(pid){
       var p=master.platforms.find(function(x){return x.id===pid;});
       if(!p)return;
-      var entry=((md.talent[t.id]||{})[pid])||{pts:0,daily:0};
-      var pts=+(entry.pts||0),daily=+(entry.daily||0);
+      var entry=((md.talent[t.id]||{})[pid])||{pts:0};
+      var pts=+(entry.pts||0);
+      var daily=getDailyTotal(entry);
       var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
       tamt+=Math.round((pts-daily)*rate/100);
     });
@@ -509,72 +519,107 @@ function renderTalent(){
   master.talents.forEach(function(t){
     var tData=md.talent[t.id]||{};
     var tTotal=0;
-    h+='<div class="card"><div class="talent-name">'+(t.realName?esc(t.realName)+' <span style="font-size:13px;font-weight:400;color:var(--text2)">（'+esc(t.name)+'）</span>':esc(t.name))+'</div>';
+    var oName=t.outsourceId?(function(){var o=master.outsource.find(function(x){return x.id===t.outsourceId;});return o?o.name:"";})():"";
+    h+='<div class="card">';
+    h+='<div class="talent-name">'+(t.realName?esc(t.realName)+' <span style="font-size:13px;font-weight:400;color:var(--text2)">（'+esc(t.name)+'）</span>':esc(t.name))+'</div>';
+    if(oName) h+='<div class="talent-outsource">委託先: '+esc(oName)+'</div>';
     if((t.platforms||[]).length===0){
       h+='<div class="empty" style="padding:10px 0">媒体が設定されていません（マスタで設定）</div>';
     }else{
-      h+='<div class="chat-grid"><span class="chat-hdr">媒体</span><span class="chat-hdr" style="text-align:right">合計pt</span><span class="chat-hdr" style="text-align:center">率</span><span class="chat-hdr" style="text-align:right">金額</span></div>';
+      h+='<div class="chat-grid"><span class="chat-hdr">媒体</span><span class="chat-hdr" style="text-align:right">合計pt</span><span class="chat-hdr" style="text-align:center">率</span><span class="chat-hdr" style="text-align:right">報酬</span></div>';
       t.platforms.forEach(function(pid){
         var p=master.platforms.find(function(x){return x.id===pid;});
         if(!p)return;
-        var entry=(tData[pid])||{pts:"",daily:""};
-        var pts=+(entry.pts||0),daily=+(entry.daily||0);
+        var entry=(tData[pid])||{pts:""};
+        var pts=+(entry.pts||0);
+        var dailyTotal=getDailyTotal(entry);
         var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
-        var amt=Math.round((pts-daily)*rate/100);
+        var amt=Math.round((pts-dailyTotal)*rate/100);
         tTotal+=amt;
+        var dailyEntries=entry.dailyEntries||(entry.daily?[{date:"",pts:+(entry.daily||0)}]:[]);
         h+='<div class="chat-grid">';
         h+='<span style="font-size:14px;font-weight:500">'+esc(p.name)+'</span>';
-        h+='<input type="number" value="'+(entry.pts||"")+'" placeholder="0" style="padding:5px 8px;font-size:14px;text-align:right" onchange="setTalentPt(\''+t.id+'\',\''+pid+'\',\'pts\',this.value)">';
+        h+='<input type="number" value="'+(entry.pts||"")+'" placeholder="0" style="padding:5px 8px;font-size:14px;text-align:right" onchange="setTalentPt(\''+t.id+'\',\''+pid+'\',this.value)">';
         h+='<span class="chat-pct">'+rate+'%</span>';
         h+='<span class="chat-amt" id="ta-'+t.id+'-'+pid+'">'+yen(amt)+'</span>';
         h+='</div>';
-        // 日払い控除
-        h+='<div class="chat-grid" style="margin-bottom:2px">';
-        h+='<span style="font-size:12px;color:var(--text2)">　└ 日払い控除pt</span>';
-        h+='<input type="number" value="'+(entry.daily||"")+'" placeholder="0" style="padding:4px 8px;font-size:13px;text-align:right;border-color:var(--warn)" onchange="setTalentPt(\''+t.id+'\',\''+pid+'\',\'daily\',this.value)">';
-        h+='<span class="chat-pct" style="color:var(--red)">−</span>';
-        h+='<span style="font-size:13px;text-align:right;color:var(--red)" id="td-'+t.id+'-'+pid+'">'+(+(entry.daily||0)>0?'−'+yen(Math.round(+(entry.daily||0)*p.rate/100)):'')+'</span>';
+        h+='<div class="daily-section">';
+        h+='<div style="font-size:12px;color:var(--text2);font-weight:600;margin-bottom:6px">日払い控除</div>';
+        h+='<div id="daily-rows-'+t.id+'-'+pid+'">';
+        dailyEntries.forEach(function(de,idx){
+          h+='<div class="daily-row">'
+            +'<input type="date" value="'+(de.date||"")+'" onchange="setDailyDate(\''+t.id+'\',\''+pid+'\','+idx+',this.value)">'
+            +'<input type="number" value="'+(de.pts||"")+'" placeholder="0" onchange="setDailyPts(\''+t.id+'\',\''+pid+'\','+idx+',this.value)">pt'
+            +'<button class="btn bs" style="padding:2px 6px;font-size:12px" onclick="removeDailyEntry(\''+t.id+'\',\''+pid+'\','+idx+')">✕</button>'
+            +'</div>';
+        });
+        h+='</div>';
+        h+='<button class="daily-add" onclick="addDailyEntry(\''+t.id+'\',\''+pid+'\')">＋ 日払いを追加</button>';
+        if(dailyTotal>0) h+='<div class="daily-total">控除合計 −'+yen(Math.round(dailyTotal*rate/100))+'（'+dailyTotal.toLocaleString()+'pt）</div>';
         h+='</div>';
       });
     }
-    h+='<div class="talent-total"><span>'+esc(t.name)+' 報酬合計</span><span style="color:var(--red)" id="tt-'+t.id+'">'+yen(tTotal)+'</span></div>';
+    h+='<div class="talent-total"><span>報酬合計</span><span style="color:var(--red)" id="tt-'+t.id+'">'+yen(tTotal)+'</span></div>';
     h+='</div>';
     grandTotal+=tTotal;
   });
   h+='<div class="pbar"><div style="font-size:15px;font-weight:700">タレント報酬合計</div><span style="font-size:22px;font-weight:800;color:var(--red)">'+yen(grandTotal)+'</span></div>';
   return h;
 }
-function setTalentPt(tid,pid,field,val){
+function renderTalent2(){if(currentTab==="タレント")document.getElementById("mc").innerHTML=renderTalent();}
+function setTalentPt(tid,pid,val){
   var md=getMonth(currentMonth);
-  if(!md.talent) md.talent={};
-  if(!md.talent[tid]) md.talent[tid]={};
-  if(!md.talent[tid][pid]) md.talent[tid][pid]={pts:0,daily:0};
-  md.talent[tid][pid][field]=parseFloat(val)||0;
+  if(!md.talent)md.talent={};
+  if(!md.talent[tid])md.talent[tid]={};
+  if(!md.talent[tid][pid])md.talent[tid][pid]={pts:0};
+  md.talent[tid][pid].pts=parseFloat(val)||0;
   setMonth(currentMonth,md);
-  // 再計算・インプレース更新
+  updateTalentAmt(tid,pid,md);
+}
+function addDailyEntry(tid,pid){
+  var md=getMonth(currentMonth);
+  if(!md.talent)md.talent={};
+  if(!md.talent[tid])md.talent[tid]={};
+  if(!md.talent[tid][pid])md.talent[tid][pid]={pts:0};
+  if(!md.talent[tid][pid].dailyEntries)md.talent[tid][pid].dailyEntries=[];
+  md.talent[tid][pid].dailyEntries=md.talent[tid][pid].dailyEntries.concat([{date:"",pts:0}]);
+  setMonth(currentMonth,md);renderTalent2();
+}
+function removeDailyEntry(tid,pid,idx){
+  var md=getMonth(currentMonth);
+  md.talent[tid][pid].dailyEntries=md.talent[tid][pid].dailyEntries.filter(function(_,i){return i!==idx;});
+  setMonth(currentMonth,md);renderTalent2();
+}
+function setDailyDate(tid,pid,idx,val){
+  var md=getMonth(currentMonth);
+  if(!md.talent[tid][pid].dailyEntries)return;
+  md.talent[tid][pid].dailyEntries[idx].date=val;
+  setMonth(currentMonth,md);
+}
+function setDailyPts(tid,pid,idx,val){
+  var md=getMonth(currentMonth);
+  if(!md.talent[tid][pid].dailyEntries)return;
+  md.talent[tid][pid].dailyEntries[idx].pts=parseFloat(val)||0;
+  setMonth(currentMonth,md);
+  updateTalentAmt(tid,pid,md);
+}
+function updateTalentAmt(tid,pid,md){
   var t=master.talents.find(function(x){return x.id===tid;});
   var p=master.platforms.find(function(x){return x.id===pid;});
-  if(t&&p){
-    var entry=md.talent[tid][pid];
-    var pts=+(entry.pts||0),daily=+(entry.daily||0);
-    var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
-    var amt=Math.round((pts-daily)*rate/100);
-    var el=document.getElementById("ta-"+tid+"-"+pid);
-    if(el) el.textContent=yen(amt);
-    var el2=document.getElementById("td-"+tid+"-"+pid);
-    if(el2) el2.textContent=daily>0?"−"+yen(Math.round(daily*rate/100)):"";
-    // タレント合計
-    var tTotal=0;
-    (t.platforms||[]).forEach(function(p2id){
-      var pp=master.platforms.find(function(x){return x.id===p2id;});
-      if(!pp)return;
-      var e2=(md.talent[tid][p2id])||{pts:0,daily:0};
-      var r2=(t.rates&&t.rates[p2id]!=null)?t.rates[p2id]:pp.rate;
-      tTotal+=Math.round((+(e2.pts||0)-+(e2.daily||0))*r2/100);
-    });
-    var el3=document.getElementById("tt-"+tid);
-    if(el3) el3.textContent=yen(tTotal);
-  }
+  if(!t||!p)return;
+  var entry=md.talent[tid][pid]||{pts:0};
+  var pts=+(entry.pts||0),dailyTotal=getDailyTotal(entry);
+  var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
+  var amt=Math.round((pts-dailyTotal)*rate/100);
+  var el=document.getElementById("ta-"+tid+"-"+pid);if(el)el.textContent=yen(amt);
+  var tTotal=0;
+  (t.platforms||[]).forEach(function(p2id){
+    var pp=master.platforms.find(function(x){return x.id===p2id;});if(!pp)return;
+    var e2=(md.talent[tid]&&md.talent[tid][p2id])||{pts:0};
+    var r2=(t.rates&&t.rates[p2id]!=null)?t.rates[p2id]:pp.rate;
+    tTotal+=Math.round((+(e2.pts||0)-getDailyTotal(e2))*r2/100);
+  });
+  var el3=document.getElementById("tt-"+tid);if(el3)el3.textContent=yen(tTotal);
 }
 
 /* ===== スタッフタブ ===== */
@@ -632,6 +677,7 @@ function renderGaichuu(){
     h+='<div class="empty">⚙️ マスタで外注を登録してください</div>';
   }else{
     h+='<table class="t"><thead><tr><th>外注先</th><th class="tr" style="width:110px">pt</th><th class="tr" style="width:60px">報酬率</th><th class="tr" style="width:100px">金額</th></tr></thead><tbody>';
+
     var total=0;
     master.outsource.forEach(function(o){
       var linked=master.talents.filter(function(t){return t.outsourceId===o.id;});
@@ -658,9 +704,15 @@ function renderGaichuu(){
       h+='<tr><td class="fw">'+esc(o.name)+'</td>';
       h+=ptCell;
       h+='<td class="tr">'+fLabel+'</td>';
-      h+='<td class="tr fw" style="color:var(--blue)" id="out-'+o.id+'">'+yen(amt)+'</td></tr>';
-      // 業務委託タレント一覧
+      h+='<td class="tr fw" id="out-'+o.id+'">'+yen(amt)+'</td></tr>';
+      // 業務委託タレント一覧（アコーディオン）
       if(hasLinked){
+        h+='<tr><td colspan="4" style="padding:0">'
+          +'<div style="padding:4px 10px;background:var(--bg2);border-bottom:1px solid var(--border)">'
+          +'<button onclick="toggleOutDetail(\'od-'+o.id+'\')" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text2);font-family:inherit">▶ 明細を表示（'+linked.length+'件）</button>'
+          +'</div></td></tr>';
+        h+='<tr id="od-'+o.id+'" style="display:none"><td colspan="4" style="padding:0">';
+        h+='<table class="t" style="margin:0">';
         linked.forEach(function(t){
           var tpts=0,tamt=0;
           (t.platforms||[]).forEach(function(pid){
@@ -671,12 +723,13 @@ function renderGaichuu(){
             tpts+=+(entry.pts||0);
             tamt+=Math.round((+(entry.pts||0)-+(entry.daily||0))*rate/100);
           });
-          h+='<tr style="background:var(--blue-bg)">'
-            +'<td style="padding-left:20px;font-size:13px;color:var(--text2)">└ '+(t.realName?esc(t.realName)+' ('+esc(t.name)+')':esc(t.name))+'</td>'
+          h+='<tr style="background:var(--bg2)">'
+            +'<td style="padding-left:16px;font-size:13px">└ '+(t.realName?esc(t.realName)+' ('+esc(t.name)+')':esc(t.name))+'</td>'
             +'<td class="tr" style="font-size:13px;color:var(--text2)">'+tpts.toLocaleString()+'pt</td>'
             +'<td class="tr" style="font-size:12px;color:var(--text2)">報酬</td>'
-            +'<td class="tr fw" style="color:var(--blue)">'+yen(tamt)+'</td></tr>';
+            +'<td class="tr fw" style="color:var(--text2)">'+yen(tamt)+'</td></tr>';
         });
+        h+='</table></td></tr>';
       }
     });
     h+='<tr class="trow"><td colspan="3">外注報酬合計</td><td class="tr">'+yen(total)+'</td></tr>';
@@ -1103,8 +1156,14 @@ function openMasterModal(type,id){
       +'<div class="mrow" id="mm-amount-row"><label id="mm-amount-label">'+(s&&s.type==="hourly"?"時給（円）":"月額固定（円）")+'</label><input type="number" id="mm-amount" value="'+(s&&s.amount?s.amount:"")+'"></div>';
   }else if(type==="outsource"){
     var o=id?master.outsource.find(function(x){return x.id===id;}):{};
+    var oF=o&&o.formula?o.formula:"simple";
     body='<div class="mrow"><label>外注先名</label><input type="text" id="mm-name" value="'+(o&&o.name?esc(o.name):"")+'" placeholder="例: スカウトA"></div>'
-      +'<div class="mrow"><label>報酬率（%）</label><input type="number" id="mm-rate" value="'+(o&&o.rate?o.rate:"")+'"></div>';
+      +'<div class="mrow"><label>報酬率（%）</label><input type="number" id="mm-rate" value="'+(o&&o.rate?o.rate:"")+'"></div>'
+      +'<div class="mrow"><label>計算方式</label>'
+      +'<select id="mm-formula">'
+      +'<option value="simple"'+(oF==="simple"?" selected":"")+'>シンプル（pt × 率%）</option>'
+      +'<option value="abe"'+(oF==="abe"?" selected":"")+'>安部方式（pt × 率% ÷ 1.05 × 1.1）</option>'
+      +'</select></div>';
   }
   document.getElementById("masterModalBody").innerHTML=body;
   document.getElementById("masterOverlay").classList.add("show");
@@ -1120,6 +1179,12 @@ function updateStaffModal(){
   var lbl=document.getElementById("mm-amount-label");
   if(lbl) lbl.textContent=t==="hourly"?"時給（円）":"月額固定（円）";
 }
+function toggleOutDetail(id){
+  var el=document.getElementById(id);if(!el)return;
+  var btn=el.previousElementSibling&&el.previousElementSibling.querySelector("button");
+  if(el.style.display==="none"){el.style.display="";if(btn)btn.textContent="▼ 明細を閉じる";}
+  else{el.style.display="none";if(btn)btn.textContent="▶ 明細を表示（"+(el.querySelectorAll("tr").length-1)+"件）";}
+}
 function updateOutModal(){
   var f=(document.getElementById("mm-formula")||{}).value||"simple";
   var r=parseFloat((document.getElementById("mm-rate")||{}).value)||0;
@@ -1131,7 +1196,12 @@ function updateOutModal(){
     else prev.textContent="計算例：10,000pt × "+r+"% = ¥"+Math.round(10000*r/100).toLocaleString();
   }
 }
+function getDailyTotal(entry){
+  if(entry.dailyEntries&&entry.dailyEntries.length) return entry.dailyEntries.reduce(function(s,e){return s+(+(e.pts||0));},0);
+  return +(entry.daily||0); // 旧データ互換
+}
 function calcOutAmt(o,pts){
+  if(o.formula==="abe") return Math.round(pts*o.rate/100/1.05*1.1);
   return Math.round(pts*o.rate/100);
 }
 function calcIncAmt(p,pts){
@@ -1189,10 +1259,11 @@ function saveMasterModal(){
     }
   }else if(type==="outsource"){
     var orate=parseFloat((document.getElementById("mm-rate")||{}).value)||0;
+    var oformula=(document.getElementById("mm-formula")||{}).value||"simple";
     if(id){
-      master.outsource=master.outsource.map(function(o){return o.id===id?Object.assign({},o,{name:name,rate:orate}):o;});
+      master.outsource=master.outsource.map(function(o){return o.id===id?Object.assign({},o,{name:name,rate:orate,formula:oformula}):o;});
     }else{
-      master.outsource=master.outsource.concat([{id:uid(),name:name,rate:orate}]);
+      master.outsource=master.outsource.concat([{id:uid(),name:name,rate:orate,formula:oformula}]);
     }
   }
 
