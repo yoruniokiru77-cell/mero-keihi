@@ -1206,13 +1206,14 @@ function getBmCode(){
     +'});'
     +'if(rs.length>0){idRows=rs;break;}'
     +'}'
-    // Find right table: data rows where col2 ends with "pt"
+    // Find right table: data rows where col0=digits(マネージャーID) and col2 has "pt", skip single-row summary
     +'var ptRows=null;'
     +'for(var i=0;i<tbls.length;i++){'
     +'var rs=Array.from(tbls[i].querySelectorAll(\'tr\')).filter(function(r){'
-    +'var c=r.querySelectorAll(\'td\');return c.length>=3&&(c[2].textContent||\'\').indexOf(\'pt\')>=0;'
+    +'var c=r.querySelectorAll(\'td\');'
+    +'return c.length>=3&&/^\\d+$/.test((c[0].textContent||\'\').trim())&&(c[2].textContent||\'\').indexOf(\'pt\')>=0;'
     +'});'
-    +'if(rs.length>0){ptRows=rs;break;}'
+    +'if(rs.length>1){ptRows=rs;break;}'
     +'}'
     +'if(!idRows||!ptRows)return [];'
     +'var out=[],n=Math.min(idRows.length,ptRows.length);'
