@@ -709,7 +709,7 @@ function renderGaichuu(){
       if(hasLinked){
         h+='<tr><td colspan="4" style="padding:0">'
           +'<div style="padding:4px 10px;background:var(--bg2);border-bottom:1px solid var(--border)">'
-          +'<button onclick="toggleOutDetail(\'od-'+o.id+'\')" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text2);font-family:inherit">▶ 明細を表示（'+linked.length+'件）</button>'
+          +'<button onclick="toggleOutDetail(\'od-'+o.id+'\')" data-orig-text="▶ 明細を表示（'+linked.length+'件）" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text2);font-family:inherit">▶ 明細を表示（'+linked.length+'件）</button>'
           +'</div></td></tr>';
         h+='<tr id="od-'+o.id+'" style="display:none"><td colspan="4" style="padding:0">';
         h+='<table class="t" style="margin:0">';
@@ -1182,8 +1182,13 @@ function updateStaffModal(){
 function toggleOutDetail(id){
   var el=document.getElementById(id);if(!el)return;
   var btn=el.previousElementSibling&&el.previousElementSibling.querySelector("button");
-  if(el.style.display==="none"){el.style.display="";if(btn)btn.textContent="▼ 明細を閉じる";}
-  else{el.style.display="none";if(btn)btn.textContent="▶ 明細を表示（"+(el.querySelectorAll("tr").length-1)+"件）";}
+  if(el.style.display==="none"){
+    el.style.display="";
+    if(btn)btn.textContent="▼ 明細を閉じる";
+  }else{
+    el.style.display="none";
+    if(btn&&btn.dataset.origText)btn.textContent=btn.dataset.origText;
+  }
 }
 function updateOutModal(){
   var f=(document.getElementById("mm-formula")||{}).value||"simple";
