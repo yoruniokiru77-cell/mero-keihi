@@ -1312,7 +1312,19 @@ function openTalentNotice(tid){
     var linkedToThis=linked.some(function(lt){return lt.id===t.id;});
     var nameMatch=tNames.some(function(n){return o2.name===n;});
     if(!linkedToThis&&!nameMatch)return;
-    var totalPts2=+(md.outsource[o2.id]||0);
+    var linked2=master.talents.filter(function(lt){return lt.outsourceId===o2.id;});
+    var totalPts2;
+    if(linked2.length>0){
+      totalPts2=0;
+      linked2.forEach(function(lt){
+        (lt.platforms||[]).forEach(function(pid){
+          var e2=((md.talent||{})[lt.id]||{})[pid]||{pts:0};
+          totalPts2+=+(e2.pts||0);
+        });
+      });
+    }else{
+      totalPts2=+(md.outsource[o2.id]||0);
+    }
     var outAmt2=calcOutAmt(o2,totalPts2);
     grandTotal+=outAmt2;
     h+='<tr><td style="padding:6px 8px;border:1px solid #ccc;padding-left:20px">'+esc(o2.name)+' '+m+'月分（外注報酬）</td>'
