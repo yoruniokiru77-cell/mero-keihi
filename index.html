@@ -304,6 +304,7 @@ input[type=number]{text-align:right}
 var SB_URL="https://ctwbhyqlpnmhfiizpgab.supabase.co";
 var SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0d2JoeXFscG5taGZpaXpwZ2FiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NTcyMzcsImV4cCI6MjA5NDIzMzIzN30.evN-i3bHm156X6gNLtFJQWIw-YCUyqyEigltG0UD5z0";
 var GAS_URL="YOUR_GAS_URL_HERE";
+var LINE_GAS_URL="YOUR_LINE_GAS_URL_HERE";
 var KUBUN=KANPU_MODE?["会社","関ケ","関プ","船田"]:["会社","関ケ","船田"];
 var KAMOKU=["旅費交通費","車両費","水道光熱費","通信費","家賃","租税公課","福利厚生費","消耗品費","会議費交際費","キャストとの飲食費","給料","その他"];
 var TABS=["収支","タレント","スタッフ","外注","経費","マスタ"];
@@ -599,6 +600,7 @@ function renderTalent(){
       +'<div style="display:flex;align-items:center;gap:10px">'
       +'<span style="color:var(--red)" id="tt-'+t.id+'">'+yen(tTotal)+'</span>'
       +'<button class="btn be" onclick="openTalentNotice(\''+t.id+'\')" title="支払通知書">🖨️</button>'
+      +'<button class="btn be" onclick="sendLineNotice(\''+t.id+'\')" title="LINE送信" style="background:var(--blue);color:#fff">LINE</button>'
       +'</div></div>';
     h+='</div>';
     grandTotal+=tTotal;
@@ -1321,6 +1323,43 @@ function showNotice(name,pts){
   document.getElementById("noticeBody").innerHTML=h;
   document.getElementById("noticeOverlay").classList.add("show");
 }
+async function sendLineNotice(tid){
+  var t=master.talents.find(function(x){return x.id===tid;});
+  if(!t)return;
+  if(!t.realName){alert("本名が設定されていないため送信できません");return;}
+  if(LINE_GAS_URL==="YOUR_LINE_GAS_URL_HERE"){alert("LINE_GAS_URLを設定してください");return;}
+  if(!window.html2canvas||!window.jspdf){alert("PDFライブラリ読み込み中です。少し待って再試行してください");return;}
+  openTalentNotice(tid);
+  await new Promise(function(r){setTimeout(r,400);});
+  var el=document.getElementById("noticeBody");
+  if(!el){alert("明細の生成に失敗しました");return;}
+  try{
+    var canvas=await html2canvas(el,{scale:2,useCORS:true,backgroundColor:"#ffffff"});
+    var imgData=canvas.toDataURL("image/jpeg",0.92);
+    var pdf=new window.jspdf.jsPDF({unit:"px",format:[canvas.width/2,canvas.height/2]});
+    pdf.addImage(imgData,"JPEG",0,0,canvas.width/2,canvas.height/2);
+    var pdfBlob=pdf.output("blob");
+    var fileName="notices/"+tid+"_"+Date.now()+".pdf";
+    var upRes=await fetch(SB_URL+"/storage/v1/object/receipts/"+fileName,{
+      method:"POST",
+      headers:{apikey:SB_KEY,Authorization:"Bearer "+SB_KEY,"Content-Type":"application/pdf","x-upsert":"true"},
+      body:pdfBlob
+    });
+    if(!upRes.ok){var et=await upRes.text();alert("PDFアップロード失敗: "+et);return;}
+    var pdfUrl=SB_URL+"/storage/v1/object/public/receipts/"+fileName;
+    document.getElementById("noticeOverlay").classList.remove("show");
+    var gasUrl=LINE_GAS_URL+"?action=sendPdf&realName="+encodeURIComponent(t.realName)+"&pdfUrl="+encodeURIComponent(pdfUrl);
+    var res=await fetch(gasUrl);
+    var json=await res.json();
+    if(json.success&&json.data&&json.data.ok){
+      alert("LINE送信完了: "+t.realName);
+    }else{
+      alert("LINE送信失敗: "+((json.data&&json.data.error)||"不明なエラー"));
+    }
+  }catch(e){
+    alert("エラー: "+e.message);
+  }
+}
 function openTalentNotice(tid){
   var t=master.talents.find(function(x){return x.id===tid;});
   if(!t)return;
@@ -1557,5 +1596,7 @@ function deleteMaster(type,id){
   render();
 })();
 </script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </body>
 </html>
