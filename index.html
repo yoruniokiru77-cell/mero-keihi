@@ -214,7 +214,7 @@ input[type=number]{text-align:right}
 
 @media(max-width:640px){
   .kgrid{grid-template-columns:1fr 1fr}
-  .body{padding:10px 4px 80px}
+  .body{padding:100px 4px 80px}
   .hdr{padding:0 10px}
   .chat-grid{grid-template-columns:1fr 80px 50px 80px}
 }
@@ -552,7 +552,7 @@ function setIncomePt(pid,val){
 function renderTalent(){
   var lk=isLocked();
   var md=getMonth(currentMonth);
-  var h="";
+  var h=lk?'':'<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn be" onclick="sendLineNoticeAll()" style="background:#06c755;color:#fff;font-size:13px;padding:8px 16px">📤 LINE一括送信</button></div>';
   if(master.talents.length===0){
     h='<div class="card"><div class="empty">⚙️ マスタでタレントを登録してください</div></div>';
     return h;
@@ -610,7 +610,7 @@ function renderTalent(){
     h+='</div>';
     grandTotal+=tTotal;
   });
-  h+='<div class="pbar"><div style="font-size:15px;font-weight:700">タレント報酬合計</div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:22px;font-weight:800;color:var(--red)">'+yen(grandTotal)+'</span>'+(lk?'':'<button class="btn be" onclick="sendLineNoticeAll()" style="background:#06c755;color:#fff;font-size:13px">LINE一括送信</button>')+'</div></div>';
+  h+='<div class="pbar"><div style="font-size:15px;font-weight:700">タレント報酬合計</div><span style="font-size:22px;font-weight:800;color:var(--red)">'+yen(grandTotal)+'</span></div>';
   if(lk) return '<div style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:var(--r);padding:8px 14px;margin-bottom:12px;font-size:13px;text-align:center">🔒 ロック中 — 編集するには解除してください</div><div inert style="opacity:0.65">'+h+'</div>';
   return h;
 }
