@@ -1162,7 +1162,7 @@ function openMasterModal(type,id){
       +'<div class="mrow"><label>計算方式</label>'
       +'<select id="mm-formula">'
       +'<option value="simple"'+(oF==="simple"?" selected":"")+'>シンプル（pt × 率%）</option>'
-      +'<option value="abe"'+(oF==="abe"?" selected":"")+'>安部方式（pt × 率% ÷ 1.05 × 1.1）</option>'
+      +'<option value="abe"'+(oF==="abe"?" selected":"")+'>FANZA方式（pt × 率% ÷ 1.05 × 1.1 × 0.98）</option>'
       +'</select></div>';
   }
   document.getElementById("masterModalBody").innerHTML=body;
@@ -1201,7 +1201,7 @@ function getDailyTotal(entry){
   return +(entry.daily||0); // 旧データ互換
 }
 function calcOutAmt(o,pts){
-  if(o.formula==="abe") return Math.round(pts*o.rate/100/1.05*1.1);
+  if(o.formula==="abe") return Math.round(pts*o.rate/100/1.05*1.1*0.98);
   return Math.round(pts*o.rate/100);
 }
 function calcIncAmt(p,pts){
