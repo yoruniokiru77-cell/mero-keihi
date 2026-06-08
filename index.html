@@ -287,6 +287,7 @@ input[type=number]{text-align:right}
     <button class="btn-month" onclick="changeMonth(1)">›</button>
   </div>
   <div class="hright">
+    <button id="lockBtn" onclick="toggleLock()" style="padding:4px 10px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg);cursor:pointer;font-size:13px;font-family:inherit;display:none"></button>
     <span class="dot" id="dot"></span>
     <span class="slabel" id="slabel">接続中...</span>
   </div>
@@ -332,6 +333,25 @@ function fmtMonth(ym){var p=ym.split("-");return p[0]+"年"+String(+p[1])+"月";
 function sbh(){return{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY};}
 function setSync(s,l){var d=document.getElementById("dot"),lb=document.getElementById("slabel");if(d)d.className="dot "+s;if(lb)lb.textContent=l;}
 
+/* ===== ロック ===== */
+function isLocked(){return !!(monthly[currentMonth]||{}).locked;}
+function updateLockBtn(){
+  var btn=document.getElementById("lockBtn");if(!btn)return;
+  btn.style.display="inline-block";
+  if(isLocked()){btn.textContent="🔒 ロック中";btn.style.color="var(--red)";}
+  else{btn.textContent="🔓 ロック";btn.style.color="var(--text2)";}
+}
+function toggleLock(){
+  if(isLocked()){
+    var pw=prompt("パスワードを入力してください");
+    if(pw!=="32642222999"){alert("パスワードが違います");return;}
+    var md=getMonth(currentMonth);md.locked=false;setMonth(currentMonth,md);
+  }else{
+    if(!confirm(fmtMonth(currentMonth)+"をロックしますか？\nタレント・外注・スタッフの編集ができなくなります。")){return;}
+    var md=getMonth(currentMonth);md.locked=true;setMonth(currentMonth,md);
+  }
+  updateLockBtn();render();
+}
 /* ===== 月ナビ ===== */
 function changeMonth(dir){
   var p=currentMonth.split("-");var y=+p[0],m=+p[1];
@@ -442,6 +462,7 @@ function render(){
   else if(currentTab==="経費") mc.innerHTML=renderKeihi();
   else if(currentTab==="マスタ") mc.innerHTML=renderMasterTab();
   document.getElementById("monthLabel").textContent=fmtMonth(currentMonth);
+  updateLockBtn();
 }
 function renderTabs(){
   var html="";
@@ -523,6 +544,7 @@ function setIncomePt(pid,val){
 
 /* ===== タレントタブ ===== */
 function renderTalent(){
+  var lk=isLocked();
   var md=getMonth(currentMonth);
   var h="";
   if(master.talents.length===0){
@@ -582,6 +604,7 @@ function renderTalent(){
     grandTotal+=tTotal;
   });
   h+='<div class="pbar"><div style="font-size:15px;font-weight:700">タレント報酬合計</div><span style="font-size:22px;font-weight:800;color:var(--red)">'+yen(grandTotal)+'</span></div>';
+  if(lk) return '<div style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:var(--r);padding:8px 14px;margin-bottom:12px;font-size:13px;text-align:center">🔒 ロック中 — 編集するには解除してください</div><div inert style="opacity:0.65">'+h+'</div>';
   return h;
 }
 function renderTalent2(){if(currentTab==="タレント")document.getElementById("mc").innerHTML=renderTalent();}
@@ -642,6 +665,7 @@ function updateTalentAmt(tid,pid,md){
 
 /* ===== スタッフタブ ===== */
 function renderStaff(){
+  var lk=isLocked();
   var md=getMonth(currentMonth);
   var h="<div class=\"card\"><div class=\"ch\">👥 スタッフ報酬</div>";
   if(master.staff.length===0){
@@ -672,6 +696,7 @@ function renderStaff(){
     h+='<div class="exp-total" style="border-top:2px solid var(--border2);margin-top:4px">スタッフ報酬合計<span style="color:var(--red)">'+yen(total)+'</span></div>';
   }
   h+='</div>';
+  if(lk) return '<div style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:var(--r);padding:8px 14px;margin-bottom:12px;font-size:13px;text-align:center">🔒 ロック中 — 編集するには解除してください</div><div inert style="opacity:0.65">'+h+'</div>';
   return h;
 }
 function setStaffHours(sid,val){
@@ -689,6 +714,7 @@ function setStaffHours(sid,val){
 
 /* ===== 外注タブ ===== */
 function renderGaichuu(){
+  var lk=isLocked();
   var md=getMonth(currentMonth);
   var h="<div class=\"card\"><div class=\"ch\">🔗 外注報酬</div>";
   if(master.outsource.length===0){
@@ -756,6 +782,7 @@ function renderGaichuu(){
     h+='</tbody></table>';
   }
   h+='</div>';
+  if(lk) return '<div style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:var(--r);padding:8px 14px;margin-bottom:12px;font-size:13px;text-align:center">🔒 ロック中 — 編集するには解除してください</div><div inert style="opacity:0.65">'+h+'</div>';
   return h;
 }
 function setOutPt(oid,val){
