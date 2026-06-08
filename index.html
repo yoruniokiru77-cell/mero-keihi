@@ -1267,13 +1267,53 @@ function openTalentNotice(tid){
   var t=master.talents.find(function(x){return x.id===tid;});
   if(!t)return;
   var md=getMonth(currentMonth);
-  var pts=0;
-  (t.platforms||[]).forEach(function(pid){
-    var entry=((md.talent||{})[t.id]||{})[pid]||{pts:0};
-    pts+=+(entry.pts||0);
-  });
+  var today=new Date();
+  var dateStr=today.getFullYear()+'年'+(today.getMonth()+1)+'月'+today.getDate()+'日';
+  var p2=currentMonth.split("-");var y=p2[0],m=+p2[1];
+  var periodStr=y+'年'+m+'月後半分';
+  var payDate=y+'年'+(m+1>12?1:m+1)+'月20日';
   var name=t.realName||t.name;
-  showNotice(name,pts);
+  var rows=[],grandTotal=0;
+  (t.platforms||[]).forEach(function(pid){
+    var pl=master.platforms.find(function(x){return x.id===pid;});if(!pl)return;
+    var entry=((md.talent||{})[t.id]||{})[pid]||{pts:0};
+    var pts=+(entry.pts||0)-getDailyTotal(entry);
+    var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:pl.rate;
+    var amt=Math.round(pts*rate/100);
+    grandTotal+=amt;
+    rows.push({name:esc(pl.name),pts:+(entry.pts||0),rate:rate,amt:amt});
+  });
+  var h=buildNoticeHeader(dateStr,name);
+  h+='<div style="font-size:12px;margin-bottom:20px">平素は格別なるご高配を賜り厚く御礼申し上げます。<br>以下の通り、お支払いのご案内となります。今後とも宜しくお願い致します。</div>';
+  h+='<div style="border:2px solid #000;padding:12px 20px;margin-bottom:20px;text-align:center">'
+    +'<div style="font-size:13px;margin-bottom:4px">お支払金額（税込）</div>'
+    +'<div style="font-size:28px;font-weight:800">¥'+grandTotal.toLocaleString()+'</div>'
+    +'<div style="font-size:12px;color:#555;margin-top:4px">ライブチャット出演料として</div>'
+    +'</div>';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px">'
+    +'<thead><tr style="background:#f5f5f4">'
+    +'<th style="padding:6px 8px;border:1px solid #ccc;text-align:left">明細</th>'
+    +'<th style="padding:6px 8px;border:1px solid #ccc;text-align:right">ポイント</th>'
+    +'<th style="padding:6px 8px;border:1px solid #ccc;text-align:center">料率</th>'
+    +'<th style="padding:6px 8px;border:1px solid #ccc;text-align:right">金額</th>'
+    +'</tr></thead><tbody>';
+  h+='<tr><td colspan="4" style="padding:6px 8px;border:1px solid #ccc"><strong>'+periodStr+'</strong></td></tr>';
+  rows.forEach(function(r){
+    h+='<tr><td style="padding:6px 8px;border:1px solid #ccc;padding-left:20px">'+r.name+'</td>'
+      +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right">'+r.pts.toLocaleString()+'pt</td>'
+      +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:center">'+r.rate+'%</td>'
+      +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right">¥'+r.amt.toLocaleString()+'</td></tr>';
+  });
+  h+='</tbody></table>';
+  h+='<div style="display:flex;justify-content:flex-end;margin-bottom:20px">'
+    +'<table style="border-collapse:collapse;font-size:12px;min-width:260px">'
+    +'<tr style="background:#f5f5f4;font-weight:700"><td style="padding:6px 12px;border:1px solid #ccc">合計</td>'
+    +'<td style="padding:6px 12px;border:1px solid #ccc;text-align:right">¥'+grandTotal.toLocaleString()+'</td></tr>'
+    +'</table></div>';
+  h+='<div style="font-size:12px;color:#555">支払予定日：'+payDate+'<br>※土日祝の場合、翌銀行営業日になります。</div>';
+  h+='</div>';
+  document.getElementById("noticeBody").innerHTML=h;
+  document.getElementById("noticeOverlay").classList.add("show");
 }
 function openPaymentNotice(oid){
   var o=master.outsource.find(function(x){return x.id===oid;});
