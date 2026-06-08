@@ -1075,6 +1075,7 @@ function openMasterModal(type,id){
     var t=id?master.talents.find(function(x){return x.id===id;}):{};
     body='<div class="mrow"><label>本名</label><input type="text" id="mm-realname" value="'+(t&&t.realName?esc(t.realName):"")+'" placeholder="例: 山田 花子"></div>'
       +'<div class="mrow"><label>源氏名</label><input type="text" id="mm-name" value="'+(t&&t.name?esc(t.name):"")+'" placeholder="例: さくら"></div>'
+      +'<div class="mrow"><label>FANZAキャラクターID<span style="font-size:11px;color:var(--text3);margin-left:6px">例: 1075132</span></label><input type="number" id="mm-fanzaid" value="'+(t&&t.fanzaCharId?t.fanzaCharId:"")+'" placeholder="FANZAの管理画面のID"></div>'
       +'<div class="mrow"><label>業務委託先<span style="font-size:11px;color:var(--text3);margin-left:6px">任意</span></label>'
       +'<select id="mm-outsource"><option value="">なし</option>'
       +master.outsource.map(function(o){return'<option value="'+o.id+'"'+(t&&t.outsourceId===o.id?' selected':'')+'>'+esc(o.name)+'</option>';}).join("")
@@ -1165,6 +1166,7 @@ function saveMasterModal(){
   }else if(type==="talent"){
     var platforms=Array.from(document.querySelectorAll("#mm-platforms button")).filter(function(b){return b.style.background==='var(--blue)';}).map(function(b){return b.dataset.pid;});
     var realName=(document.getElementById("mm-realname")||{}).value||"";
+    var fanzaCharId=(document.getElementById("mm-fanzaid")||{}).value||"";
     var outsourceId=(document.getElementById("mm-outsource")||{}).value||"";
     var rates={};
     document.querySelectorAll("#mm-platforms input[data-rate-pid]").forEach(function(el){
@@ -1172,9 +1174,9 @@ function saveMasterModal(){
       if(!isNaN(v)&&v>0) rates[el.dataset.ratePid]=v;
     });
     if(id){
-      master.talents=master.talents.map(function(t){return t.id===id?Object.assign({},t,{name:name,realName:realName,outsourceId:outsourceId,platforms:platforms,rates:rates}):t;});
+      master.talents=master.talents.map(function(t){return t.id===id?Object.assign({},t,{name:name,realName:realName,fanzaCharId:fanzaCharId,outsourceId:outsourceId,platforms:platforms,rates:rates}):t;});
     }else{
-      master.talents=master.talents.concat([{id:uid(),name:name,realName:realName,outsourceId:outsourceId,platforms:platforms,rates:rates}]);
+      master.talents=master.talents.concat([{id:uid(),name:name,realName:realName,fanzaCharId:fanzaCharId,outsourceId:outsourceId,platforms:platforms,rates:rates}]);
     }
   }else if(type==="staff"){
     var stype=(document.getElementById("mm-type")||{}).value||"fixed";
