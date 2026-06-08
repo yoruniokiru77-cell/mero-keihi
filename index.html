@@ -605,7 +605,7 @@ function renderTalent(){
     h+='</div>';
     grandTotal+=tTotal;
   });
-  h+='<div class="pbar"><div style="font-size:15px;font-weight:700">タレント報酬合計</div><span style="font-size:22px;font-weight:800;color:var(--red)">'+yen(grandTotal)+'</span></div>';
+  h+='<div class="pbar"><div style="font-size:15px;font-weight:700">タレント報酬合計</div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:22px;font-weight:800;color:var(--red)">'+yen(grandTotal)+'</span>'+(lk?'':'<button class="btn be" onclick="sendLineNoticeAll()" style="background:#06c755;color:#fff;font-size:13px">LINE一括送信</button>')+'</div></div>';
   if(lk) return '<div style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:var(--r);padding:8px 14px;margin-bottom:12px;font-size:13px;text-align:center">🔒 ロック中 — 編集するには解除してください</div><div inert style="opacity:0.65">'+h+'</div>';
   return h;
 }
@@ -1323,47 +1323,70 @@ function showNotice(name,pts){
   document.getElementById("noticeBody").innerHTML=h;
   document.getElementById("noticeOverlay").classList.add("show");
 }
+async function generateNoticePdf(tid){
+  openTalentNotice(tid);
+  await new Promise(function(r){setTimeout(r,400);});
+  var el=document.getElementById("noticeBody");
+  var tmpDiv=document.createElement("div");
+  tmpDiv.style.cssText="position:fixed;left:-9999px;top:0;width:520px;background:#fff;padding:20px;box-sizing:border-box";
+  tmpDiv.innerHTML=el.innerHTML;
+  document.body.appendChild(tmpDiv);
+  var canvas=await html2canvas(tmpDiv,{scale:2,useCORS:true,backgroundColor:"#ffffff"});
+  document.body.removeChild(tmpDiv);
+  document.getElementById("noticeOverlay").classList.remove("show");
+  var imgData=canvas.toDataURL("image/jpeg",0.92);
+  var pdf=new window.jspdf.jsPDF({unit:"px",format:[canvas.width/2,canvas.height/2]});
+  pdf.addImage(imgData,"JPEG",0,0,canvas.width/2,canvas.height/2);
+  return pdf.output("blob");
+}
+async function uploadAndSendLine(tid,realName,pdfBlob){
+  var fileName="notices/"+tid+"_"+Date.now()+".pdf";
+  var upRes=await fetch(SB_URL+"/storage/v1/object/receipts/"+fileName,{
+    method:"POST",
+    headers:{apikey:SB_KEY,Authorization:"Bearer "+SB_KEY,"Content-Type":"application/pdf","x-upsert":"true"},
+    body:pdfBlob
+  });
+  if(!upRes.ok){var et=await upRes.text();throw new Error("アップロード失敗: "+et);}
+  var pdfUrl=SB_URL+"/storage/v1/object/public/receipts/"+fileName;
+  var gasUrl=LINE_GAS_URL+"?action=sendPdf&realName="+encodeURIComponent(realName)+"&pdfUrl="+encodeURIComponent(pdfUrl);
+  var res=await fetch(gasUrl);
+  var json=await res.json();
+  if(!json.success||!json.data||!json.data.ok) throw new Error((json.data&&json.data.error)||"不明なエラー");
+}
 async function sendLineNotice(tid){
   var t=master.talents.find(function(x){return x.id===tid;});
   if(!t)return;
   if(!t.realName){alert("本名が設定されていないため送信できません");return;}
   if(LINE_GAS_URL==="YOUR_LINE_GAS_URL_HERE"){alert("LINE_GAS_URLを設定してください");return;}
   if(!window.html2canvas||!window.jspdf){alert("PDFライブラリ読み込み中です。少し待って再試行してください");return;}
-  openTalentNotice(tid);
-  await new Promise(function(r){setTimeout(r,400);});
-  var el=document.getElementById("noticeBody");
-  if(!el){alert("明細の生成に失敗しました");return;}
   try{
-    var tmpDiv=document.createElement("div");
-    tmpDiv.style.cssText="position:fixed;left:-9999px;top:0;width:520px;background:#fff;padding:20px;box-sizing:border-box";
-    tmpDiv.innerHTML=el.innerHTML;
-    document.body.appendChild(tmpDiv);
-    var canvas=await html2canvas(tmpDiv,{scale:2,useCORS:true,backgroundColor:"#ffffff"});
-    document.body.removeChild(tmpDiv);
-    var imgData=canvas.toDataURL("image/jpeg",0.92);
-    var pdf=new window.jspdf.jsPDF({unit:"px",format:[canvas.width/2,canvas.height/2]});
-    pdf.addImage(imgData,"JPEG",0,0,canvas.width/2,canvas.height/2);
-    var pdfBlob=pdf.output("blob");
-    var fileName="notices/"+tid+"_"+Date.now()+".pdf";
-    var upRes=await fetch(SB_URL+"/storage/v1/object/receipts/"+fileName,{
-      method:"POST",
-      headers:{apikey:SB_KEY,Authorization:"Bearer "+SB_KEY,"Content-Type":"application/pdf","x-upsert":"true"},
-      body:pdfBlob
-    });
-    if(!upRes.ok){var et=await upRes.text();alert("PDFアップロード失敗: "+et);return;}
-    var pdfUrl=SB_URL+"/storage/v1/object/public/receipts/"+fileName;
-    document.getElementById("noticeOverlay").classList.remove("show");
-    var gasUrl=LINE_GAS_URL+"?action=sendPdf&realName="+encodeURIComponent(t.realName)+"&pdfUrl="+encodeURIComponent(pdfUrl);
-    var res=await fetch(gasUrl);
-    var json=await res.json();
-    if(json.success&&json.data&&json.data.ok){
-      alert("LINE送信完了: "+t.realName);
-    }else{
-      alert("LINE送信失敗: "+((json.data&&json.data.error)||"不明なエラー"));
-    }
-  }catch(e){
-    alert("エラー: "+e.message);
+    var blob=await generateNoticePdf(tid);
+    await uploadAndSendLine(tid,t.realName,blob);
+    alert("LINE送信完了: "+t.realName);
+  }catch(e){alert("LINE送信失敗: "+e.message);}
+}
+async function sendLineNoticeAll(){
+  if(LINE_GAS_URL==="YOUR_LINE_GAS_URL_HERE"){alert("LINE_GAS_URLを設定してください");return;}
+  if(!window.html2canvas||!window.jspdf){alert("PDFライブラリ読み込み中です。少し待って再試行してください");return;}
+  var talents=master.talents.filter(function(t){return t.realName;});
+  if(!talents.length){alert("本名が設定されているタレントがいません");return;}
+  if(!confirm(talents.length+"名に一括送信します。よろしいですか？")){return;}
+  var sent=[],skipped=[],failed=[];
+  for(var i=0;i<talents.length;i++){
+    var t=talents[i];
+    try{
+      var checkRes=await fetch(LINE_GAS_URL+"?action=getUserId&realName="+encodeURIComponent(t.realName));
+      var checkJson=await checkRes.json();
+      if(!checkJson.success||!checkJson.data||!checkJson.data.userId){skipped.push(t.realName);continue;}
+    }catch(e){skipped.push(t.realName);continue;}
+    try{
+      var blob=await generateNoticePdf(t.id);
+      await uploadAndSendLine(t.id,t.realName,blob);
+      sent.push(t.realName);
+    }catch(e){failed.push(t.realName);}
   }
+  var msg="LINE一括送信完了\n✅ 送信("+sent.length+"): "+(sent.join("、")||"なし")+"\n⏭️ 未登録スキップ("+skipped.length+"): "+(skipped.join("、")||"なし")+(failed.length?"\n❌ 失敗("+failed.length+"): "+failed.join("、"):"");
+  alert(msg);
 }
 function openTalentNotice(tid){
   var t=master.talents.find(function(x){return x.id===tid;});
