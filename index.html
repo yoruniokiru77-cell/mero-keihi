@@ -1172,10 +1172,12 @@ function openMasterModal(type,id){
     var ni=t&&t.noticeItems||[];
     body+='<div class="mrow"><label>給料明細追加項目</label>'
       +'<div id="mm-notice-items" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">';
-    ni.forEach(function(item,i){
+    ni.forEach(function(item){
+      var isNeg=item.amount<0;
       body+='<div style="display:flex;gap:6px;align-items:center">'
-        +'<input type="text" placeholder="項目名" value="'+esc(item.name)+'" data-ni-name="'+i+'" style="flex:1;padding:6px 8px;font-size:13px">'
-        +'<input type="number" placeholder="金額" value="'+item.amount+'" data-ni-amt="'+i+'" style="width:110px;padding:6px 8px;font-size:13px;text-align:right">'
+        +'<input type="text" placeholder="項目名" value="'+esc(item.name)+'" style="flex:1;padding:6px 8px;font-size:13px">'
+        +'<button type="button" onclick="toggleNiSign(this)" style="padding:4px 10px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:'+(isNeg?'var(--red)':'var(--text)')+';cursor:pointer;font-size:15px;font-weight:700;min-width:36px">'+(isNeg?'－':'＋')+'</button>'
+        +'<input type="number" placeholder="金額" min="0" inputmode="numeric" value="'+Math.abs(item.amount)+'" style="width:100px;padding:6px 8px;font-size:13px;text-align:right">'
         +'<button type="button" onclick="removeNoticeItem(this)" style="padding:4px 10px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--red);cursor:pointer;font-size:13px">×</button>'
         +'</div>';
     });
@@ -1206,9 +1208,15 @@ function addNoticeItem(){
   var div=document.createElement("div");
   div.style.cssText="display:flex;gap:6px;align-items:center";
   div.innerHTML='<input type="text" placeholder="項目名" style="flex:1;padding:6px 8px;font-size:13px">'
-    +'<input type="number" placeholder="金額" style="width:110px;padding:6px 8px;font-size:13px;text-align:right">'
+    +'<button type="button" onclick="toggleNiSign(this)" style="padding:4px 10px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--text);cursor:pointer;font-size:15px;font-weight:700;min-width:36px">＋</button>'
+    +'<input type="number" placeholder="金額" min="0" inputmode="numeric" style="width:100px;padding:6px 8px;font-size:13px;text-align:right">'
     +'<button type="button" onclick="removeNoticeItem(this)" style="padding:4px 10px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--red);cursor:pointer;font-size:13px">×</button>';
   wrap.appendChild(div);
+}
+function toggleNiSign(btn){
+  var isPlus=btn.textContent==='＋';
+  btn.textContent=isPlus?'－':'＋';
+  btn.style.color=isPlus?'var(--red)':'var(--text)';
 }
 function removeNoticeItem(btn){btn.parentElement.remove();}
 function togglePlatformBtn(btn){
@@ -1477,7 +1485,9 @@ function saveMasterModal(){
     document.querySelectorAll("#mm-notice-items>div").forEach(function(row){
       var nm=(row.querySelector("input[type=text]")||{}).value||"";
       var am=parseFloat((row.querySelector("input[type=number]")||{}).value);
-      if(nm.trim()&&!isNaN(am)) noticeItems.push({name:nm.trim(),amount:am});
+      var signBtn=row.querySelector("button");
+      var sign=(signBtn&&signBtn.textContent==='－')?-1:1;
+      if(nm.trim()&&!isNaN(am)) noticeItems.push({name:nm.trim(),amount:sign*Math.abs(am)});
     });
     if(id){
       master.talents=master.talents.map(function(t){return t.id===id?Object.assign({},t,{name:name,realName:realName,fanzaCharId:fanzaCharId,outsourceId:outsourceId,platforms:platforms,rates:rates,noticeItems:noticeItems}):t;});
