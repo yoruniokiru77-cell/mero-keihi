@@ -1306,9 +1306,12 @@ function openTalentNotice(tid){
       +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:center">'+r.rate+'%</td>'
       +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right">¥'+r.amt.toLocaleString()+'</td></tr>';
   });
+  var tNames=[t.name,t.realName].filter(Boolean);
   master.outsource.forEach(function(o2){
     var linked=master.talents.filter(function(lt){return lt.outsourceId===o2.id;});
-    if(!linked.some(function(lt){return lt.id===t.id;}))return;
+    var linkedToThis=linked.some(function(lt){return lt.id===t.id;});
+    var nameMatch=tNames.some(function(n){return o2.name===n;});
+    if(!linkedToThis&&!nameMatch)return;
     var totalPts2=+(md.outsource[o2.id]||0);
     var outAmt2=calcOutAmt(o2,totalPts2);
     grandTotal+=outAmt2;
