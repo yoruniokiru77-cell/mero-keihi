@@ -1334,10 +1334,12 @@ async function sendLineNotice(tid){
   var el=document.getElementById("noticeBody");
   if(!el){alert("明細の生成に失敗しました");return;}
   try{
-    var prevMaxH=el.style.maxHeight,prevOverflow=el.style.overflowY;
-    el.style.maxHeight="none";el.style.overflowY="visible";
-    var canvas=await html2canvas(el,{scale:2,useCORS:true,backgroundColor:"#ffffff"});
-    el.style.maxHeight=prevMaxH;el.style.overflowY=prevOverflow;
+    var tmpDiv=document.createElement("div");
+    tmpDiv.style.cssText="position:fixed;left:-9999px;top:0;width:"+el.offsetWidth+"px;background:#fff;padding:20px;box-sizing:border-box";
+    tmpDiv.innerHTML=el.innerHTML;
+    document.body.appendChild(tmpDiv);
+    var canvas=await html2canvas(tmpDiv,{scale:2,useCORS:true,backgroundColor:"#ffffff"});
+    document.body.removeChild(tmpDiv);
     var imgData=canvas.toDataURL("image/jpeg",0.92);
     var pdf=new window.jspdf.jsPDF({unit:"px",format:[canvas.width/2,canvas.height/2]});
     pdf.addImage(imgData,"JPEG",0,0,canvas.width/2,canvas.height/2);
