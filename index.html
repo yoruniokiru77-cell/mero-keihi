@@ -1169,6 +1169,19 @@ function openMasterModal(type,id){
     });
     if(master.platforms.length===0) body+='<span style="font-size:12px;color:var(--text3)">先に媒体を登録してください</span>';
     body+='</div></div>';
+    var ni=t&&t.noticeItems||[];
+    body+='<div class="mrow"><label>給料明細追加項目</label>'
+      +'<div id="mm-notice-items" style="display:flex;flex-direction:column;gap:8px;margin-top:8px">';
+    ni.forEach(function(item,i){
+      body+='<div style="display:flex;gap:6px;align-items:center">'
+        +'<input type="text" placeholder="項目名" value="'+esc(item.name)+'" data-ni-name="'+i+'" style="flex:1;padding:6px 8px;font-size:13px">'
+        +'<input type="number" placeholder="金額" value="'+item.amount+'" data-ni-amt="'+i+'" style="width:110px;padding:6px 8px;font-size:13px;text-align:right">'
+        +'<button type="button" onclick="removeNoticeItem(this)" style="padding:4px 10px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--red);cursor:pointer;font-size:13px">×</button>'
+        +'</div>';
+    });
+    body+='</div>'
+      +'<button type="button" onclick="addNoticeItem()" style="margin-top:8px;padding:6px 14px;border:1px dashed var(--blue);border-radius:var(--r);background:var(--bg);color:var(--blue);cursor:pointer;font-size:13px;font-family:inherit">＋ 項目を追加</button>'
+      +'</div>';
   }else if(type==="staff"){
     var s=id?master.staff.find(function(x){return x.id===id;}):{};
     body='<div class="mrow"><label>氏名</label><input type="text" id="mm-name" value="'+(s&&s.name?esc(s.name):"")+'" placeholder="例: 山田 花子"></div>'
@@ -1188,6 +1201,16 @@ function openMasterModal(type,id){
   document.getElementById("masterModalBody").innerHTML=body;
   document.getElementById("masterOverlay").classList.add("show");
 }
+function addNoticeItem(){
+  var wrap=document.getElementById("mm-notice-items");
+  var div=document.createElement("div");
+  div.style.cssText="display:flex;gap:6px;align-items:center";
+  div.innerHTML='<input type="text" placeholder="項目名" style="flex:1;padding:6px 8px;font-size:13px">'
+    +'<input type="number" placeholder="金額" style="width:110px;padding:6px 8px;font-size:13px;text-align:right">'
+    +'<button type="button" onclick="removeNoticeItem(this)" style="padding:4px 10px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--red);cursor:pointer;font-size:13px">×</button>';
+  wrap.appendChild(div);
+}
+function removeNoticeItem(btn){btn.parentElement.remove();}
 function togglePlatformBtn(btn){
   var on=btn.style.background.indexOf('var(--blue)')>=0||btn.style.background==='var(--blue)';
   btn.style.background=on?'var(--bg)':'var(--blue)';
@@ -1331,6 +1354,12 @@ function openTalentNotice(tid){
       +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:center">'+o2.rate+'%</td>'
       +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right">¥'+outAmt2.toLocaleString()+'</td></tr>';
   });
+  (t.noticeItems||[]).forEach(function(item){
+    grandTotal+=item.amount;
+    var amtStr=(item.amount<0?'-':'')+'¥'+Math.abs(item.amount).toLocaleString();
+    h+='<tr><td colspan="3" style="padding:6px 8px;border:1px solid #ccc;padding-left:20px">'+esc(item.name)+'</td>'
+      +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right;color:'+(item.amount<0?'var(--red)':'inherit')+'">'+amtStr+'</td></tr>';
+  });
   h+='</tbody></table>';
   h+='<div style="display:flex;justify-content:flex-end;margin-bottom:20px">'
     +'<table style="border-collapse:collapse;font-size:12px;min-width:260px">'
@@ -1444,10 +1473,16 @@ function saveMasterModal(){
       var v=parseFloat(el.value);
       if(!isNaN(v)&&v>0) rates[el.dataset.ratePid]=v;
     });
+    var noticeItems=[];
+    document.querySelectorAll("#mm-notice-items>div").forEach(function(row){
+      var nm=(row.querySelector("input[type=text]")||{}).value||"";
+      var am=parseFloat((row.querySelector("input[type=number]")||{}).value);
+      if(nm.trim()&&!isNaN(am)) noticeItems.push({name:nm.trim(),amount:am});
+    });
     if(id){
-      master.talents=master.talents.map(function(t){return t.id===id?Object.assign({},t,{name:name,realName:realName,fanzaCharId:fanzaCharId,outsourceId:outsourceId,platforms:platforms,rates:rates}):t;});
+      master.talents=master.talents.map(function(t){return t.id===id?Object.assign({},t,{name:name,realName:realName,fanzaCharId:fanzaCharId,outsourceId:outsourceId,platforms:platforms,rates:rates,noticeItems:noticeItems}):t;});
     }else{
-      master.talents=master.talents.concat([{id:uid(),name:name,realName:realName,fanzaCharId:fanzaCharId,outsourceId:outsourceId,platforms:platforms,rates:rates}]);
+      master.talents=master.talents.concat([{id:uid(),name:name,realName:realName,fanzaCharId:fanzaCharId,outsourceId:outsourceId,platforms:platforms,rates:rates,noticeItems:noticeItems}]);
     }
   }else if(type==="staff"){
     var stype=(document.getElementById("mm-type")||{}).value||"fixed";
