@@ -30,7 +30,7 @@ html{overflow-x:clip}
 body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;font-size:14px;color:var(--text);background:var(--bg3);min-height:100vh;overflow-x:hidden}
 
 /* ヘッダー */
-.hdr{background:var(--bg);border-bottom:1px solid var(--border);padding:0 12px;display:flex;align-items:center;justify-content:space-between;height:52px;position:sticky;top:0;z-index:200;box-shadow:var(--sh);gap:8px}
+.hdr{background:var(--bg);border-bottom:1px solid var(--border);padding:0 12px;display:flex;align-items:center;justify-content:space-between;height:52px;position:fixed;top:0;left:0;right:0;z-index:200;box-shadow:var(--sh);gap:8px}
 .htitle{font-size:15px;font-weight:700;white-space:nowrap}
 .month-nav{display:flex;align-items:center;gap:6px;flex:1;justify-content:center}
 .month-nav span{font-size:14px;font-weight:600;white-space:nowrap}
@@ -43,13 +43,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","N
 .slabel{font-size:11px;color:var(--text3);white-space:nowrap}
 
 /* メインタブ */
-.tab-bar{background:var(--bg);border-bottom:2px solid var(--border);display:flex;overflow-x:auto;position:sticky;top:52px;z-index:199;-webkit-overflow-scrolling:touch}
+.tab-bar{background:var(--bg);border-bottom:2px solid var(--border);display:flex;overflow-x:auto;position:fixed;top:52px;left:0;right:0;z-index:199;-webkit-overflow-scrolling:touch}
 .tab-bar::-webkit-scrollbar{display:none}
 .mtab{padding:11px 14px;font-size:13px;font-weight:600;border:none;background:transparent;cursor:pointer;color:var(--text2);white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-2px;font-family:inherit}
 .mtab:hover{color:var(--text)}.mtab.on{color:var(--blue);border-bottom-color:var(--blue)}
 
 /* ボディ */
-.body{max-width:680px;margin:0 auto;padding:14px 6px 80px}
+.body{max-width:680px;margin:0 auto;padding:14px 6px 80px;padding-top:100px}
 
 /* カード */
 .card{background:var(--bg);border-radius:var(--rl);padding:16px;margin-bottom:12px;box-shadow:var(--sh);border:1px solid var(--border)}
