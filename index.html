@@ -437,9 +437,13 @@ function calcMonth(m){
   // スタッフ報酬
   var stfTotal=0,stfByS={};
   master.staff.forEach(function(s){
-    var amt=s.type==="fixed"?s.amount:((+(((md.staff||{})[s.id]||{}).hours||0))*s.amount);
+    var se=(md.staff||{})[s.id]||{};
+    if(se.excluded)return;
+    var baseAmt=s.type==="fixed"?s.amount:((+(se.hours||0))*s.amount);
+    var amt=(se.amtOverride!=null)?se.amtOverride:baseAmt;
     stfByS[s.id]=amt;stfTotal+=amt;
   });
+  ((md.staffExtra)||[]).forEach(function(e){stfByS["ex_"+e.id]=e.amount;stfTotal+=e.amount;});
   // 外注報酬
   var outTotal=0,outByO={};
   master.outsource.forEach(function(o){
@@ -674,49 +678,99 @@ function updateTalentAmt(tid,pid,md){
 function renderStaff(){
   var lk=isLocked();
   var md=getMonth(currentMonth);
-  var h="<div class=\"card\"><div class=\"ch\">👥 スタッフ報酬</div>";
+  var h='<div class="card"><div class="ch">👥 スタッフ報酬</div>';
+  var total=0;
   if(master.staff.length===0){
     h+='<div class="empty">⚙️ マスタでスタッフを登録してください</div>';
   }else{
-    var total=0;
     master.staff.forEach(function(s){
-      var amt;
-      if(s.type==="fixed"){
-        amt=s.amount;
-        h+='<div class="staff-row">';
-        h+='<div class="staff-info"><div class="staff-name">'+esc(s.name)+'</div><div class="staff-sub">固定報酬</div></div>';
-        h+='<span class="badge-fixed">固定</span>';
-        h+='<div class="staff-amt">'+yen(amt)+'</div>';
-        h+='</div>';
-      }else{
-        var hours=+(((md.staff||{})[s.id]||{}).hours||0);
-        amt=hours*s.amount;
-        h+='<div class="staff-row">';
-        h+='<div class="staff-info"><div class="staff-name">'+esc(s.name)+'</div><div class="staff-sub">時給 '+yen(s.amount)+'/h</div></div>';
-        h+='<span class="badge-hourly">時給</span>';
-        h+='<div class="staff-hours"><input type="number" value="'+(hours||"")+'" placeholder="0" style="font-size:14px;padding:6px 8px;text-align:right" onchange="setStaffHours(\''+s.id+'\',this.value)">h</div>';
-        h+='<div class="staff-amt" id="sf-'+s.id+'">'+yen(amt)+'</div>';
-        h+='</div>';
+      var se=(md.staff||{})[s.id]||{};
+      var excl=!!se.excluded;
+      var baseAmt=s.type==="fixed"?s.amount:((+(se.hours||0))*s.amount);
+      var amt=(se.amtOverride!=null)?se.amtOverride:baseAmt;
+      if(!excl)total+=amt;
+      var rowStyle=excl?'opacity:0.4;':'';
+      h+='<div class="staff-row" style="'+rowStyle+'align-items:flex-start;flex-wrap:wrap;gap:6px">';
+      // 除外チェックボックス
+      h+='<input type="checkbox"'+(excl?' checked':'')+' title="この月は除外" style="margin-top:4px;flex-shrink:0;cursor:pointer" onchange="toggleStaffExclude(\''+s.id+'\',this.checked)">';
+      h+='<div class="staff-info" style="min-width:80px"><div class="staff-name">'+esc(s.name)+'</div>';
+      h+='<div class="staff-sub">'+(s.type==="fixed"?'固定':'時給 '+yen(s.amount)+'/h')+'</div></div>';
+      if(s.type==="hourly"){
+        h+='<div class="staff-hours"><input type="number" value="'+(se.hours||"")+'" placeholder="0" style="font-size:14px;padding:6px 8px;text-align:right"'+(excl?' disabled':'')+' onchange="setStaffHours(\''+s.id+'\',this.value)">h</div>';
       }
-      total+=amt;
+      // 金額（上書き可）
+      var dispAmt=excl?0:amt;
+      h+='<div style="display:flex;align-items:center;gap:4px;margin-left:auto">';
+      h+='<span style="font-size:12px;color:var(--text3)">¥</span>';
+      h+='<input type="number" id="sf-'+s.id+'" value="'+(excl?"":(se.amtOverride!=null?se.amtOverride:baseAmt||""))+'" placeholder="'+baseAmt+'"'+(excl?' disabled':'')+' style="width:100px;font-size:14px;font-weight:700;padding:5px 8px;text-align:right;border:1px solid '+(se.amtOverride!=null?'var(--blue)':'var(--border)')+';border-radius:var(--r);background:var(--bg);color:var(--text)" onchange="setStaffAmt(\''+s.id+'\',this.value)" title="金額を上書き（空欄でマスタ参照）">';
+      h+='</div>';
+      h+='</div>';
     });
-    h+='<div class="exp-total" style="border-top:2px solid var(--border2);margin-top:4px">スタッフ報酬合計<span style="color:var(--red)">'+yen(total)+'</span></div>';
   }
+  // この月だけのスタッフ
+  var extras=(md.staffExtra)||[];
+  extras.forEach(function(e,i){
+    total+=e.amount;
+    h+='<div class="staff-row" style="align-items:center;gap:6px">';
+    h+='<div class="staff-info" style="flex:1"><input type="text" value="'+esc(e.name)+'" placeholder="名前" style="font-size:14px;padding:5px 8px;width:100%" onchange="setStaffExtra('+i+',\'name\',this.value)"></div>';
+    h+='<div style="display:flex;align-items:center;gap:4px"><span style="font-size:12px;color:var(--text3)">¥</span>';
+    h+='<input type="number" value="'+(e.amount||"")+'" placeholder="0" style="width:100px;font-size:14px;font-weight:700;padding:5px 8px;text-align:right" onchange="setStaffExtra('+i+',\'amount\',this.value)"></div>';
+    h+='<button class="btn bs" style="padding:3px 8px;font-size:12px" onclick="removeStaffExtra('+i+')">✕</button>';
+    h+='</div>';
+  });
+  h+='<div class="exp-total" id="stf-total" style="border-top:2px solid var(--border2);margin-top:4px">スタッフ報酬合計<span style="color:var(--red)">'+yen(total)+'</span></div>';
+  h+='<button class="btn-plus" onclick="addStaffExtra()">＋ この月だけスタッフを追加</button>';
   h+='</div>';
   if(lk) return '<div style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:var(--r);padding:8px 14px;margin-bottom:12px;font-size:13px;text-align:center">🔒 ロック中 — 編集するには解除してください</div><div inert style="opacity:0.65">'+h+'</div>';
   return h;
 }
+function toggleStaffExclude(sid,checked){
+  var md=getMonth(currentMonth);
+  if(!md.staff)md.staff={};
+  if(!md.staff[sid])md.staff[sid]={};
+  md.staff[sid].excluded=checked;
+  setMonth(currentMonth,md);
+  renderStaff2();
+}
+function setStaffAmt(sid,val){
+  var md=getMonth(currentMonth);
+  if(!md.staff)md.staff={};
+  if(!md.staff[sid])md.staff[sid]={};
+  md.staff[sid].amtOverride=(val===''||val===null)?null:(parseFloat(val)||0);
+  setMonth(currentMonth,md);
+  renderStaff2();
+}
 function setStaffHours(sid,val){
   var md=getMonth(currentMonth);
-  if(!md.staff) md.staff={};
-  if(!md.staff[sid]) md.staff[sid]={};
+  if(!md.staff)md.staff={};
+  if(!md.staff[sid])md.staff[sid]={};
   md.staff[sid].hours=parseFloat(val)||0;
   setMonth(currentMonth,md);
-  var s=master.staff.find(function(x){return x.id===sid;});
-  if(s){
-    var el=document.getElementById("sf-"+sid);
-    if(el) el.textContent=yen((parseFloat(val)||0)*s.amount);
-  }
+  renderStaff2();
+}
+function addStaffExtra(){
+  var md=getMonth(currentMonth);
+  if(!md.staffExtra)md.staffExtra=[];
+  md.staffExtra=md.staffExtra.concat([{id:uid(),name:"",amount:0}]);
+  setMonth(currentMonth,md);
+  renderStaff2();
+}
+function setStaffExtra(idx,field,val){
+  var md=getMonth(currentMonth);
+  if(!md.staffExtra||!md.staffExtra[idx])return;
+  md.staffExtra[idx][field]=field==="amount"?(parseFloat(val)||0):val;
+  setMonth(currentMonth,md);
+  renderStaff2();
+}
+function removeStaffExtra(idx){
+  var md=getMonth(currentMonth);
+  md.staffExtra=(md.staffExtra||[]).filter(function(_,i){return i!==idx;});
+  setMonth(currentMonth,md);
+  renderStaff2();
+}
+function renderStaff2(){
+  var mc=document.getElementById("mc");
+  if(mc&&currentTab==="スタッフ")mc.innerHTML=renderStaff();
 }
 
 /* ===== 外注タブ ===== */
