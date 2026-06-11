@@ -192,6 +192,12 @@ input[type=number]{text-align:right}
 .staff-sub{font-size:12px;color:var(--text2);margin-top:2px}
 .staff-hours{width:80px;flex-shrink:0}
 .staff-amt{min-width:90px;text-align:right;font-size:15px;font-weight:700}
+.sw{position:relative;display:inline-block;width:42px;height:24px;flex-shrink:0}
+.sw input{opacity:0;width:0;height:0;position:absolute}
+.sw span{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#ccc;border-radius:24px;transition:.2s}
+.sw span:before{position:absolute;content:"";height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.sw input:checked+span{background:var(--blue)}
+.sw input:checked+span:before{transform:translateX(18px)}
 
 /* マスタ行 */
 .master-item{display:flex;align-items:center;gap:8px;padding:12px 0;border-bottom:1px solid var(--border)}
@@ -691,8 +697,8 @@ function renderStaff(){
       if(!excl)total+=amt;
       var rowStyle=excl?'opacity:0.4;':'';
       h+='<div class="staff-row" style="'+rowStyle+'align-items:flex-start;flex-wrap:wrap;gap:6px">';
-      // 除外チェックボックス
-      h+='<input type="checkbox"'+(excl?' checked':'')+' title="この月は除外" style="margin-top:4px;flex-shrink:0;cursor:pointer" onchange="toggleStaffExclude(\''+s.id+'\',this.checked)">';
+      // トグルスイッチ（ON=含む）
+      h+='<label class="sw" title="'+(excl?'除外中（タップで含む）':'含む（タップで除外）')+'"><input type="checkbox"'+(!excl?' checked':'')+' onchange="toggleStaffExclude(\''+s.id+'\',!this.checked)"><span></span></label>';
       h+='<div class="staff-info" style="min-width:80px"><div class="staff-name">'+esc(s.name)+'</div>';
       h+='<div class="staff-sub">'+(s.type==="fixed"?'固定':'時給 '+yen(s.amount)+'/h')+'</div></div>';
       if(s.type==="hourly"){
