@@ -867,6 +867,7 @@ function setOutPt(oid,val){
 
 /* ===== 経費タブ ===== */
 function renderKeihi(){
+  var lk=isLocked();
   var md=getMonth(currentMonth);
   var expenses=md.expenses||[];
   var c=calcMonth(currentMonth);
@@ -1030,6 +1031,7 @@ function renderKeihi(){
     }
   }
 
+  if(lk) return '<div style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:var(--r);padding:8px 14px;margin-bottom:12px;font-size:13px;text-align:center">🔒 ロック中 — 編集するには解除してください</div><div inert style="opacity:0.65">'+h+'</div>';
   return h;
 }
 function renderKeihi2(){
