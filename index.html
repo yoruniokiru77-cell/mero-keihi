@@ -520,8 +520,7 @@ function renderShuushi(){
     master.platforms.forEach(function(p){
       var pts=getMonth(currentMonth).income[p.id]||"";
       h+='<tr><td class="fw">'+esc(p.name)+'</td>';
-      var lk=isLocked();
-      h+='<td class="tr"><input type="number" value="'+pts+'" placeholder="0" style="width:130px;padding:5px 8px;font-size:14px;text-align:right'+(lk?';opacity:0.5':'')+(lk?';pointer-events:none':'')+'"'+(lk?' disabled':'')+' onchange="setIncomePt(\''+p.id+'\',this.value)" oninput="setIncomePt(\''+p.id+'\',this.value)"></td>';
+      h+='<td class="tr" style="font-size:14px;font-weight:600;color:var(--text);text-align:right;padding:5px 8px">'+(pts||'—')+'</td>';
       var pLabel=p.formula==="uriage"?'<span style="font-size:11px;color:var(--text2)">売上式</span>':p.rate+'%';
       h+='<td class="tr">'+pLabel+'</td>';
       h+='<td class="tr fw" style="color:var(--blue)" id="inc-amt-'+p.id+'">'+yen(c.incByP[p.id]||0)+'</td></tr>';
