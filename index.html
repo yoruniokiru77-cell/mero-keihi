@@ -453,8 +453,36 @@ function calcMonth(m){
   // 外注報酬
   var outTotal=0,outByO={};
   master.outsource.forEach(function(o){
-    var pts=+(md.outsource[o.id]||0);
+    var linked=master.talents.filter(function(t){return t.outsourceId===o.id;});
+    var pts;
+    if(linked.length>0){
+      pts=0;
+      linked.forEach(function(t){
+        (t.platforms||[]).forEach(function(pid){
+          var entry=((md.talent[t.id]||{})[pid])||{pts:0};
+          pts+=+(entry.pts||0);
+        });
+      });
+    }else{
+      pts=+(md.outsource[o.id]||0);
+    }
     var amt=calcOutAmt(o,pts);
+    // abe式かつ紐づきタレントあり → タレント報酬と重複する分を控除（直接再計算）
+    if(o.formula==="abe"&&linked.length>0){
+      var talAmt=0;
+      linked.forEach(function(lt){
+        (lt.platforms||[]).forEach(function(pid){
+          var lp=master.platforms.find(function(x){return x.id===pid;});
+          if(!lp)return;
+          var lentry=((md.talent[lt.id]||{})[pid])||{pts:0};
+          var lpts=+(lentry.pts||0);
+          var ldaily=getDailyTotal(lentry);
+          var lrate=(lt.rates&&lt.rates[pid]!=null)?lt.rates[pid]:lp.rate;
+          talAmt+=Math.round((lpts-ldaily)*lrate/100);
+        });
+      });
+      amt=Math.max(0,amt-talAmt);
+    }
     outByO[o.id]=amt;outTotal+=amt;
   });
   // 経費（関プは利益計算から除外）
