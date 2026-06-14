@@ -1043,6 +1043,14 @@ function setExpSubTab(t){expSubTab=t;renderKeihi2();}
 function addExp(){
   var amt=parseFloat(String(expF.amount).replace(/,/g,""))||0;
   if(amt<=0){document.getElementById("fa").focus();return;}
+  if(expF.date){
+    var enteredYM=expF.date.substring(0,7);
+    if(enteredYM!==currentMonth){
+      var em=enteredYM.replace("-","年").replace(/^.*年0?/,"年").slice(1)+"月";
+      var cm=fmtMonth(currentMonth);
+      if(!confirm("日付が"+em+"ですが、"+cm+"の経費として追加しますか？\n\n"+em+"に追加したい場合はキャンセルして月を切り替えてください。"))return;
+    }
+  }
   var md=getMonth(currentMonth);
   var exp={id:uid(),date:expF.date,kubun:expF.kubun,kamoku:expF.kamoku,detail:expF.detail,amount:amt,receiptUrl:expF.receiptUrl,tatekae:expF.tatekae};
   md.expenses=(md.expenses||[]).concat([exp]);
