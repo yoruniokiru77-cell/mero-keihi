@@ -639,13 +639,11 @@ function renderTalent(){
         h+='</div>';
       });
     }
-    var hasNoticeItems=(t.noticeItems||[]).length>0;
     h+='<div class="talent-total"><span>報酬合計</span>'
       +'<div style="display:flex;align-items:center;gap:10px">'
       +'<span style="color:var(--red)" id="tt-'+t.id+'">'+yen(tTotal)+'</span>'
-      +(hasNoticeItems?'<span style="font-size:12px;color:var(--text3)">要個別対応</span>'
-        :('<button class="btn be" onclick="openTalentNotice(\''+t.id+'\')" title="支払通知書" style="background:#6c757d;color:#fff">PDF</button>'
-        +'<button class="btn be" onclick="sendLineNotice(\''+t.id+'\')" title="LINE送信" style="background:#06c755;color:#fff">LINE</button>'))
+      +'<button class="btn be" onclick="openTalentNotice(\''+t.id+'\')" title="支払通知書" style="background:#6c757d;color:#fff">PDF</button>'
+      +'<button class="btn be" onclick="sendLineNotice(\''+t.id+'\')" title="LINE送信" style="background:#06c755;color:#fff">LINE</button>'
       +'</div></div>';
     h+='</div>';
     grandTotal+=tTotal;
@@ -1636,7 +1634,7 @@ async function sendLineNotice(tid){
 async function sendLineNoticeAll(){
   if(LINE_GAS_URL==="YOUR_LINE_GAS_URL_HERE"){alert("LINE_GAS_URLを設定してください");return;}
   if(!window.html2canvas||!window.jspdf){alert("PDFライブラリ読み込み中です。少し待って再試行してください");return;}
-  var talents=master.talents.filter(function(t){return t.realName&&!(t.noticeItems&&t.noticeItems.length>0);});
+  var talents=master.talents.filter(function(t){return t.realName;});
   if(!talents.length){alert("本名が設定されているタレントがいません");return;}
   if(!confirm(talents.length+"名に一括送信します。よろしいですか？")){return;}
   var sent=[],skipped=[],failed=[];
@@ -1725,6 +1723,7 @@ function openTalentNotice(tid){
       +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right">¥'+outAmt2.toLocaleString()+'</td></tr>';
   });
   (t.noticeItems||[]).forEach(function(item){
+    if(/家賃|光熱/.test(item.name))return;
     grandTotal+=item.amount;
     var amtStr=(item.amount<0?'-':'')+'¥'+Math.abs(item.amount).toLocaleString();
     h+='<tr><td colspan="3" style="padding:6px 8px;border:1px solid #ccc;padding-left:20px">'+esc(item.name)+'</td>'
