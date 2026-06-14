@@ -836,15 +836,31 @@ function renderGaichuu(){
         pts=+(md.outsource[o.id]||0);
       }
       var amt=calcOutAmt(o,pts);
-      total+=amt;
-      var fLabel=o.rate+'%';
+      var dispAmt=amt,dispRate=o.rate+'%';
+      if(o.formula==="abe"&&hasLinked){
+        var talAmt2=0;
+        linked.forEach(function(lt){
+          (lt.platforms||[]).forEach(function(pid){
+            var lp=master.platforms.find(function(x){return x.id===pid;});
+            if(!lp)return;
+            var lentry=((md.talent||{})[lt.id]||{})[pid]||{pts:0};
+            var lpts=+(lentry.pts||0);
+            var ldaily=getDailyTotal(lentry);
+            var lrate=(lt.rates&&lt.rates[pid]!=null)?lt.rates[pid]:lp.rate;
+            talAmt2+=Math.round((lpts-ldaily)*lrate/100);
+          });
+        });
+        dispAmt=Math.max(0,amt-talAmt2);
+        dispRate='27%';
+      }
+      total+=dispAmt;
       var ptCell=hasLinked
         ?'<td class="tr" style="color:var(--text2)">'+pts.toLocaleString()+'<br><span style="font-size:11px">（合計）</span></td>'
         :'<td class="tr"><input type="number" value="'+(md.outsource[o.id]||"")+'" placeholder="0" style="width:90px;padding:5px 8px;font-size:14px;text-align:right" onchange="setOutPt(\''+o.id+'\',this.value)"></td>';
       h+='<tr><td class="fw">'+esc(o.name)+'</td>';
       h+=ptCell;
-      h+='<td class="tr">'+fLabel+'</td>';
-      h+='<td class="tr fw" id="out-'+o.id+'">'+yen(amt)+'</td>'
+      h+='<td class="tr">'+dispRate+'</td>';
+      h+='<td class="tr fw" id="out-'+o.id+'">'+yen(dispAmt)+'</td>'
         +'<td style="white-space:nowrap;padding:4px 6px">'
         +(o.formula==="abe"?'<button class="btn be" onclick="openPaymentNotice(\''+o.id+'\')" title="支払通知書">🖨️</button>':'')
         +'</td></tr>';
