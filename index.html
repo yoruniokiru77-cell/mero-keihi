@@ -621,7 +621,7 @@ function renderTalent(){
     return h;
   }
   var grandTotal=0,grandGross=0,grandDeduct=0;
-  master.talents.forEach(function(t){
+  master.talents.filter(function(t){return !t.retiredFrom||currentMonth<t.retiredFrom;}).forEach(function(t){
     var tData=md.talent[t.id]||{};
     var tTotal=0;
     var oName=t.outsourceId?(function(){var o=master.outsource.find(function(x){return x.id===t.outsourceId;});return o?o.name:"";})():"";
@@ -1545,7 +1545,9 @@ function openMasterModal(type,id){
     });
     body+='</div>'
       +'<button type="button" onclick="addNoticeItem()" style="margin-top:8px;padding:6px 14px;border:1px dashed var(--blue);border-radius:var(--r);background:var(--bg);color:var(--blue);cursor:pointer;font-size:13px;font-family:inherit">＋ 項目を追加</button>'
-      +'</div>';
+      +'</div>'
+      +'<div class="mrow"><label>退職月<span style="font-size:11px;color:var(--text3);margin-left:6px">設定した月以降は非表示</span></label>'
+      +'<input type="month" id="mm-retired" value="'+(t&&t.retiredFrom?t.retiredFrom:"")+'" style="max-width:180px"></div>';
   }else if(type==="staff"){
     var s=id?master.staff.find(function(x){return x.id===id;}):{};
     body='<div class="mrow"><label>氏名</label><input type="text" id="mm-name" value="'+(s&&s.name?esc(s.name):"")+'" placeholder="例: 山田 花子"></div>'
@@ -1920,10 +1922,11 @@ function saveMasterModal(){
       var sign=(signBtn&&signBtn.textContent==='－')?-1:1;
       if(nm.trim()&&!isNaN(am)) noticeItems.push({name:nm.trim(),amount:sign*Math.abs(am)});
     });
+    var retiredFrom=(document.getElementById("mm-retired")||{}).value||"";
     if(id){
-      master.talents=master.talents.map(function(t){return t.id===id?Object.assign({},t,{name:name,realName:realName,fanzaCharId:fanzaCharId,outsourceId:outsourceId,platforms:platforms,rates:rates,noticeItems:noticeItems}):t;});
+      master.talents=master.talents.map(function(t){return t.id===id?Object.assign({},t,{name:name,realName:realName,fanzaCharId:fanzaCharId,outsourceId:outsourceId,platforms:platforms,rates:rates,noticeItems:noticeItems,retiredFrom:retiredFrom}):t;});
     }else{
-      master.talents=master.talents.concat([{id:uid(),name:name,realName:realName,fanzaCharId:fanzaCharId,outsourceId:outsourceId,platforms:platforms,rates:rates,noticeItems:noticeItems}]);
+      master.talents=master.talents.concat([{id:uid(),name:name,realName:realName,fanzaCharId:fanzaCharId,outsourceId:outsourceId,platforms:platforms,rates:rates,noticeItems:noticeItems,retiredFrom:retiredFrom}]);
     }
   }else if(type==="staff"){
     var stype=(document.getElementById("mm-type")||{}).value||"fixed";
