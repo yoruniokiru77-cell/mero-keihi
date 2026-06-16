@@ -257,6 +257,20 @@ input[type=number]{text-align:right}
   </div>
 </div>
 
+<!-- 日払い立替選択ポップアップ -->
+<div class="overlay" id="dailyExpOverlay" onclick="if(event.target===this)closeDailyExpPopup()">
+  <div class="modal" style="max-width:320px;padding:20px">
+    <div style="font-size:15px;font-weight:700;margin-bottom:6px">日払い経費を登録</div>
+    <div id="dailyExpInfo" style="font-size:13px;color:var(--text2);margin-bottom:14px"></div>
+    <div style="font-size:13px;font-weight:600;margin-bottom:8px">立替</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <button class="btn bp" style="text-align:left" onclick="confirmDailyExp('')">立替なし（会社）</button>
+      <button class="btn" style="background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-bg);text-align:left" onclick="confirmDailyExp('関島')">関島立替</button>
+      <button class="btn" style="background:var(--sky-bg);color:var(--sky);border:1px solid var(--sky-bg);text-align:left" onclick="confirmDailyExp('船田')">船田立替</button>
+      <button class="btn bo" onclick="closeDailyExpPopup()">経費登録しない</button>
+    </div>
+  </div>
+</div>
 <!-- 支払通知書モーダル -->
 <div id="sendingOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:700;gap:16px">
   <div style="width:44px;height:44px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite"></div>
@@ -639,11 +653,23 @@ function renderTalent(){
         h+='</div>';
       });
     }
+    var grossTotal=0,dailyDeductTotal=0;
+    (t.platforms||[]).forEach(function(pid2){
+      var p2=master.platforms.find(function(x){return x.id===pid2;});if(!p2)return;
+      var e2=(tData[pid2])||{pts:0};
+      var pts2=+(e2.pts||0),daily2=getDailyTotal(e2);
+      var rate2=(t.rates&&t.rates[pid2]!=null)?t.rates[pid2]:p2.rate;
+      grossTotal+=Math.round(pts2*rate2/100);
+      dailyDeductTotal+=Math.round(daily2*rate2/100);
+    });
     h+='<div class="talent-total"><span>報酬合計</span>'
+      +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">'
       +'<div style="display:flex;align-items:center;gap:10px">'
       +'<span style="color:var(--red)" id="tt-'+t.id+'">'+yen(tTotal)+'</span>'
       +'<button class="btn be" onclick="openTalentNotice(\''+t.id+'\')" title="支払通知書" style="background:#6c757d;color:#fff">PDF</button>'
       +'<button class="btn be" onclick="sendLineNotice(\''+t.id+'\')" title="LINE送信" style="background:#06c755;color:#fff">LINE</button>'
+      +'</div>'
+      +(dailyDeductTotal>0?'<div style="font-size:12px;color:var(--text3)">日払い控除 −'+yen(dailyDeductTotal)+' 控除後 '+yen(grossTotal-dailyDeductTotal)+'</div>':'')
       +'</div></div>';
     h+='</div>';
     grandTotal+=tTotal;
@@ -682,12 +708,40 @@ function setDailyDate(tid,pid,idx,val){
   md.talent[tid][pid].dailyEntries[idx].date=val;
   setMonth(currentMonth,md);
 }
+var _dailyExpPending=null;
 function setDailyPts(tid,pid,idx,val){
   var md=getMonth(currentMonth);
   if(!md.talent[tid][pid].dailyEntries)return;
-  md.talent[tid][pid].dailyEntries[idx].pts=parseFloat(val)||0;
+  var pts=parseFloat(val)||0;
+  md.talent[tid][pid].dailyEntries[idx].pts=pts;
   setMonth(currentMonth,md);
   updateTalentAmt(tid,pid,md);
+  if(pts>0){
+    var entry=md.talent[tid][pid];
+    var de=entry.dailyEntries[idx];
+    var t=master.talents.find(function(x){return x.id===tid;});
+    var p=master.platforms.find(function(x){return x.id===pid;});
+    var rate=(t&&t.rates&&t.rates[pid]!=null)?t.rates[pid]:(p?p.rate:0);
+    var amt=Math.round(pts*rate/100);
+    var date=de.date||"";
+    _dailyExpPending={tid:tid,pid:pid,idx:idx,date:date,amt:amt,talentName:(t?(t.realName||t.name):"")};
+    var info=document.getElementById("dailyExpInfo");
+    if(info) info.textContent=(date||"日付未設定")+" / "+(t?(t.realName||t.name):"")+" / ¥"+amt.toLocaleString()+" (給料)";
+    document.getElementById("dailyExpOverlay").classList.add("show");
+  }
+}
+function closeDailyExpPopup(){
+  _dailyExpPending=null;
+  document.getElementById("dailyExpOverlay").classList.remove("show");
+}
+function confirmDailyExp(tatekae){
+  if(!_dailyExpPending){closeDailyExpPopup();return;}
+  var p=_dailyExpPending;
+  var md=getMonth(currentMonth);
+  var exp={id:uid(),date:p.date,kubun:"会社",kamoku:"給料",detail:p.talentName,amount:p.amt,receiptUrl:"",tatekae:tatekae};
+  md.expenses=(md.expenses||[]).concat([exp]);
+  setMonth(currentMonth,md);
+  closeDailyExpPopup();
 }
 function updateTalentAmt(tid,pid,md){
   var t=master.talents.find(function(x){return x.id===tid;});
