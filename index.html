@@ -448,8 +448,9 @@ function calcMonth(m){
       if(!p)return;
       var entry=((md.talent[t.id]||{})[pid])||{pts:0};
       var pts=+(entry.pts||0);
+      var daily=getDailyTotal(entry);
       var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
-      tamt+=Math.round(pts*rate/100);
+      tamt+=Math.round((pts-daily)*rate/100);
     });
     talByT[t.id]=tamt;talTotal+=tamt;
   });
@@ -570,10 +571,21 @@ function renderShuushi(){
     h+='</tbody></table>';
   }
   h+='</div>';
+  // タレント報酬の表示用gross計算
+  var md2=getMonth(currentMonth);
+  var talGross=0;
+  master.talents.forEach(function(t){
+    (t.platforms||[]).forEach(function(pid){
+      var p=master.platforms.find(function(x){return x.id===pid;});if(!p)return;
+      var entry=((md2.talent[t.id]||{})[pid])||{pts:0};
+      var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
+      talGross+=Math.round(+(entry.pts||0)*rate/100);
+    });
+  });
   // 支出内訳
   h+='<div class="card"><div class="ch">📉 支出内訳</div>';
   h+='<table class="t"><thead><tr><th>項目</th><th class="tr">金額</th></tr></thead><tbody>';
-  h+='<tr><td>タレント報酬</td><td class="tr fw">'+yen(c.talTotal)+'</td></tr>';
+  h+='<tr><td>タレント報酬</td><td class="tr fw">'+yen(talGross)+'</td></tr>';
   h+='<tr><td>スタッフ報酬</td><td class="tr fw">'+yen(c.stfTotal)+'</td></tr>';
   h+='<tr><td>外注報酬</td><td class="tr fw">'+yen(c.outTotal)+'</td></tr>';
   h+='<tr><td>経費合計</td><td class="tr fw">'+yen(expT)+'</td></tr>';
