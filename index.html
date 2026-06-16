@@ -448,9 +448,8 @@ function calcMonth(m){
       if(!p)return;
       var entry=((md.talent[t.id]||{})[pid])||{pts:0};
       var pts=+(entry.pts||0);
-      var daily=getDailyTotal(entry);
       var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
-      tamt+=Math.round((pts-daily)*rate/100);
+      tamt+=Math.round(pts*rate/100);
     });
     talByT[t.id]=tamt;talTotal+=tamt;
   });
