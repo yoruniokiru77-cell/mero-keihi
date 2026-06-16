@@ -678,8 +678,8 @@ function renderTalent(){
   });
   h+='<div class="pbar"><div>'
     +'<div style="font-size:15px;font-weight:700">タレント報酬合計</div>'
-    +(grandDeduct>0?'<div style="font-size:12px;color:var(--text3);margin-top:2px">日払い控除 −'+yen(grandDeduct)+' 控除後 '+yen(grandGross-grandDeduct)+'</div>':'')
-    +'</div><span style="font-size:22px;font-weight:800;color:var(--red)">'+yen(grandTotal)+'</span></div>';
+    +(grandDeduct>0?'<div style="font-size:12px;color:var(--text3);margin-top:2px">日払い控除 −'+yen(grandDeduct)+' 控除後 '+yen(grandTotal)+'</div>':'')
+    +'</div><span style="font-size:22px;font-weight:800;color:var(--red)">'+yen(grandDeduct>0?grandGross:grandTotal)+'</span></div>';
   if(lk) return '<div style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:var(--r);padding:8px 14px;margin-bottom:12px;font-size:13px;text-align:center">🔒 ロック中 — 編集するには解除してください</div><div inert style="opacity:0.65">'+h+'</div>';
   return h;
 }
