@@ -830,9 +830,8 @@ function renderStaff(){
 }
 function toggleStaffExclude(sid,checked){
   var md=getMonth(currentMonth);
-  if(!md.staff)md.staff={};
-  if(!md.staff[sid])md.staff[sid]={};
-  md.staff[sid].excluded=checked;
+  md.staff=Object.assign({},md.staff||{});
+  md.staff[sid]=Object.assign({},md.staff[sid]||{},{excluded:checked});
   setMonth(currentMonth,md);
   renderStaff2();
 }
