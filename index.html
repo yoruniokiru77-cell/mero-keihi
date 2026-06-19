@@ -1556,12 +1556,14 @@ function openMasterModal(type,id){
     var o=id?master.outsource.find(function(x){return x.id===id;}):{};
     var oF=o&&o.formula?o.formula:"simple";
     body='<div class="mrow"><label>外注先名</label><input type="text" id="mm-name" value="'+(o&&o.name?esc(o.name):"")+'" placeholder="例: スカウトA"></div>'
-      +'<div class="mrow"><label>報酬率（%）</label><input type="number" id="mm-rate" value="'+(o&&o.rate?o.rate:"")+'"></div>'
       +'<div class="mrow"><label>計算方式</label>'
-      +'<select id="mm-formula">'
+      +'<select id="mm-formula" onchange="updateOutModal()">'
       +'<option value="simple"'+(oF==="simple"?" selected":"")+'>シンプル（pt × 率%）</option>'
       +'<option value="abe"'+(oF==="abe"?" selected":"")+'>FANZA方式（pt × 率% ÷ 1.05 × 1.1 × 0.98）</option>'
-      +'</select></div>';
+      +'<option value="fixed"'+(oF==="fixed"?" selected":"")+'>固定金額</option>'
+      +'</select></div>'
+      +'<div class="mrow" id="mm-out-rate-wrap"'+(oF==="fixed"?' style="display:none"':'')+' ><label>報酬率（%）</label><input type="number" id="mm-rate" value="'+(o&&o.rate?o.rate:"")+'"></div>'
+      +'<div class="mrow" id="mm-out-fixed-wrap"'+(oF!=="fixed"?' style="display:none"':'')+' ><label>固定金額（円）</label><input type="number" id="mm-fixed-amount" value="'+(o&&o.fixedAmount?o.fixedAmount:"")+'"></div>';
   }
   document.getElementById("masterModalBody").innerHTML=body;
   document.getElementById("masterOverlay").classList.add("show");
@@ -1858,6 +1860,10 @@ function toggleOutDetail(id){
 function updateOutModal(){
   var f=(document.getElementById("mm-formula")||{}).value||"simple";
   var r=parseFloat((document.getElementById("mm-rate")||{}).value)||0;
+  var rateWrap=document.getElementById("mm-out-rate-wrap");
+  var fixedWrap=document.getElementById("mm-out-fixed-wrap");
+  if(rateWrap) rateWrap.style.display=f==="fixed"?"none":"";
+  if(fixedWrap) fixedWrap.style.display=f==="fixed"?"":"none";
   var lbl=document.getElementById("mm-rate-label");
   if(lbl) lbl.textContent=f==="uriage"?"独自率（%）":"報酬率（%）";
   var prev=document.getElementById("mm-formula-preview");
@@ -1871,6 +1877,7 @@ function getDailyTotal(entry){
   return +(entry.daily||0); // 旧データ互換
 }
 function calcOutAmt(o,pts){
+  if(o.formula==="fixed") return o.fixedAmount||0;
   if(o.formula==="abe") return Math.round(pts*o.rate/100/1.05*1.1*0.98);
   return Math.round(pts*o.rate/100);
 }
@@ -1939,10 +1946,11 @@ function saveMasterModal(){
   }else if(type==="outsource"){
     var orate=parseFloat((document.getElementById("mm-rate")||{}).value)||0;
     var oformula=(document.getElementById("mm-formula")||{}).value||"simple";
+    var ofixed=parseFloat((document.getElementById("mm-fixed-amount")||{}).value)||0;
     if(id){
-      master.outsource=master.outsource.map(function(o){return o.id===id?Object.assign({},o,{name:name,rate:orate,formula:oformula}):o;});
+      master.outsource=master.outsource.map(function(o){return o.id===id?Object.assign({},o,{name:name,rate:orate,formula:oformula,fixedAmount:ofixed}):o;});
     }else{
-      master.outsource=master.outsource.concat([{id:uid(),name:name,rate:orate,formula:oformula}]);
+      master.outsource=master.outsource.concat([{id:uid(),name:name,rate:orate,formula:oformula,fixedAmount:ofixed}]);
     }
   }
 
