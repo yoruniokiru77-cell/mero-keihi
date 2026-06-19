@@ -1613,7 +1613,9 @@ function openMasterModal(type,id){
   if(type==="outsource"){
     if(id){
       var o=master.outsource.find(function(x){return x.id===id;})||{};
-      addOutRow(o);
+      // 同じ外注先名のエントリを全部表示
+      var sameGroup=master.outsource.filter(function(x){return x.name===o.name;});
+      sameGroup.forEach(function(x){addOutRow(x);});
     }else{
       addOutRow();
     }
