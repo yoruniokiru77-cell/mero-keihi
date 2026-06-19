@@ -439,6 +439,17 @@ function calcMonth(m){
     var amt=calcIncAmt(p,pts);
     incByP[p.id]=amt;incTotal+=amt;
   });
+  // タレントマスタのマイナス項目（控除収入）
+  var noticeIncomeItems=[];
+  master.talents.forEach(function(t){
+    (t.noticeItems||[]).forEach(function(item){
+      if(item.amount<0){
+        var amt=Math.abs(item.amount);
+        noticeIncomeItems.push({talentName:t.realName||t.name,itemName:item.name,amount:amt});
+        incTotal+=amt;
+      }
+    });
+  });
   // タレント報酬
   var talTotal=0,talByT={};
   master.talents.forEach(function(t){
@@ -506,7 +517,7 @@ function calcMonth(m){
   var expTotal=mainE.reduce(function(s,e){return s+(+e.amount||0);},0);
   var kanpuTotal=kanpuE.reduce(function(s,e){return s+(+e.amount||0);},0);
   var profit=incTotal-talTotal-stfTotal-outTotal-expTotal;
-  return{incTotal,incByP,talTotal,talByT,stfTotal,stfByS,outTotal,outByO,expTotal,kanpuTotal,expenses,mainE,kanpuE,profit,md};
+  return{incTotal,incByP,noticeIncomeItems,talTotal,talByT,stfTotal,stfByS,outTotal,outByO,expTotal,kanpuTotal,expenses,mainE,kanpuE,profit,md};
 }
 
 /* ===== レンダリング ===== */
@@ -566,6 +577,11 @@ function renderShuushi(){
       var pLabel=p.formula==="uriage"?'<span style="font-size:11px;color:var(--text2)">売上式</span>':p.rate+'%';
       h+='<td class="tr">'+pLabel+'</td>';
       h+='<td class="tr fw" style="color:var(--blue)" id="inc-amt-'+p.id+'">'+yen(c.incByP[p.id]||0)+'</td></tr>';
+    });
+    (c.noticeIncomeItems||[]).forEach(function(item){
+      h+='<tr><td class="fw" colspan="2">'+esc(item.talentName)+' '+esc(item.itemName)+'</td>'
+        +'<td class="tr" style="color:var(--text2)">控除収入</td>'
+        +'<td class="tr fw" style="color:var(--blue)">'+yen(item.amount)+'</td></tr>';
     });
     h+='<tr class="trow"><td colspan="3" class="fw">収入合計</td><td class="tr" id="inc-total">'+yen(c.incTotal)+'</td></tr>';
     h+='</tbody></table>';
