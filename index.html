@@ -1875,13 +1875,28 @@ function openTalentNotice(tid){
       +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:center">'+o2.rate+'%</td>'
       +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right">¥'+outAmt2.toLocaleString()+'</td></tr>';
   });
+  var incomeItems=[],deductItems=[];
   (t.noticeItems||[]).forEach(function(item){
-    grandTotal+=item.amount;
-    var amtStr=(item.amount<0?'-':'')+'¥'+Math.abs(item.amount).toLocaleString();
+    if(item.amount<0) incomeItems.push(item); else deductItems.push(item);
+  });
+  deductItems.forEach(function(item){
+    grandTotal-=item.amount;
     h+='<tr><td colspan="3" style="padding:6px 8px;border:1px solid #ccc;padding-left:20px">'+esc(item.name)+'</td>'
-      +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right;color:'+(item.amount<0?'var(--red)':'inherit')+'">'+amtStr+'</td></tr>';
+      +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right">-¥'+item.amount.toLocaleString()+'</td></tr>';
   });
   h+='</tbody></table>';
+  if(incomeItems.length>0){
+    h+='<div style="font-size:13px;font-weight:700;margin-bottom:6px;margin-top:16px">収入明細</div>';
+    h+='<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px">'
+      +'<tbody>';
+    incomeItems.forEach(function(item){
+      var amt=Math.abs(item.amount);
+      grandTotal+=amt;
+      h+='<tr><td colspan="3" style="padding:6px 8px;border:1px solid #ccc;padding-left:20px">'+esc(item.name)+'</td>'
+        +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right;color:#2d6a4f">+¥'+amt.toLocaleString()+'</td></tr>';
+    });
+    h+='</tbody></table>';
+  }
   h+='<div style="display:flex;justify-content:flex-end;margin-bottom:20px">'
     +'<table style="border-collapse:collapse;font-size:12px;min-width:260px">'
     +'<tr style="background:#f5f5f4;font-weight:700"><td style="padding:6px 12px;border:1px solid #ccc">合計</td>'
