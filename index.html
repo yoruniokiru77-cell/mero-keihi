@@ -1950,6 +1950,19 @@ function saveMasterModal(){
       master.outsource=master.outsource.map(function(o){return o.id===id?Object.assign({},o,{name:name,rate:orate,formula:oformula,fixedAmount:ofixed}):o;});
     }else{
       master.outsource=master.outsource.concat([{id:uid(),name:name,rate:orate,formula:oformula,fixedAmount:ofixed}]);
+      scheduleSaveMaster();
+      render();
+      // フィールドをリセットして続けて追加できるようにする
+      var nmEl=document.getElementById("mm-name");
+      var rtEl=document.getElementById("mm-rate");
+      var fxEl=document.getElementById("mm-fixed-amount");
+      var fmEl=document.getElementById("mm-formula");
+      if(nmEl)nmEl.value="";
+      if(rtEl)rtEl.value="";
+      if(fxEl)fxEl.value="";
+      if(fmEl){fmEl.value="simple";updateOutModal();}
+      nmEl&&nmEl.focus();
+      return;
     }
   }
 
