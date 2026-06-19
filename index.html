@@ -1553,48 +1553,43 @@ function openMasterModal(type,id){
       +'<div class="mrow"><label>種別</label><select id="mm-type" onchange="updateStaffModal()"><option value="fixed"'+((!s||s.type==="fixed")?" selected":"")+'>固定</option><option value="hourly"'+(s&&s.type==="hourly"?" selected":"")+'> 時給</option></select></div>'
       +'<div class="mrow" id="mm-amount-row"><label id="mm-amount-label">'+(s&&s.type==="hourly"?"時給（円）":"月額固定（円）")+'</label><input type="number" id="mm-amount" value="'+(s&&s.amount?s.amount:"")+'"></div>';
   }else if(type==="outsource"){
-    if(id){
-      var o=master.outsource.find(function(x){return x.id===id;})||{};
-      var oF=o.formula||"simple";
-      body='<div class="mrow"><label>外注先名</label><input type="text" id="mm-name" value="'+esc(o.name||'')+'" placeholder="例: スカウトA"></div>'
-        +'<div class="mrow"><label>計算方式</label>'
-        +'<select id="mm-formula" onchange="updateOutModal()">'
-        +'<option value="simple"'+(oF==="simple"?" selected":"")+'>シンプル（pt × 率%）</option>'
-        +'<option value="abe"'+(oF==="abe"?" selected":"")+'>FANZA方式（pt × 率% ÷ 1.05 × 1.1 × 0.98）</option>'
-        +'<option value="fixed"'+(oF==="fixed"?" selected":"")+'>固定金額</option>'
-        +'</select></div>'
-        +'<div class="mrow" id="mm-out-rate-wrap"'+(oF==="fixed"?' style="display:none"':'')+' ><label>報酬率（%）</label><input type="number" id="mm-rate" value="'+(o.rate||'')+'"></div>'
-        +'<div class="mrow" id="mm-out-fixed-wrap"'+(oF!=="fixed"?' style="display:none"':'')+' ><label>固定金額（円）</label><input type="number" id="mm-fixed-amount" value="'+(o.fixedAmount||'')+'"></div>';
-    }else{
-      body='<div id="mm-out-rows" style="display:flex;flex-direction:column;gap:10px"></div>'
-        +'<button type="button" onclick="addOutRow()" style="margin-top:8px;padding:6px 14px;border:1px dashed var(--blue);border-radius:var(--r);background:var(--bg);color:var(--blue);cursor:pointer;font-size:13px;font-family:inherit">＋ 外注先を追加</button>';
-    }
+    body='<div id="mm-out-rows" style="display:flex;flex-direction:column;gap:10px"></div>'
+      +'<button type="button" onclick="addOutRow()" style="margin-top:8px;padding:6px 14px;border:1px dashed var(--blue);border-radius:var(--r);background:var(--bg);color:var(--blue);cursor:pointer;font-size:13px;font-family:inherit">＋ 外注先を追加</button>';
   }
   document.getElementById("masterModalBody").innerHTML=body;
   document.getElementById("masterOverlay").classList.add("show");
-  if(type==="outsource"&&!id) addOutRow();
+  if(type==="outsource"){
+    if(id){
+      var o=master.outsource.find(function(x){return x.id===id;})||{};
+      addOutRow(o);
+    }else{
+      addOutRow();
+    }
+  }
 }
-function addOutRow(){
+function addOutRow(o){
   var wrap=document.getElementById("mm-out-rows");
   if(!wrap)return;
+  o=o||{};
+  var fm=o.formula||"simple";
   var div=document.createElement("div");
   div.className="out-row";
   div.style.cssText="display:flex;flex-direction:column;gap:6px;padding:10px;border:1px solid var(--border);border-radius:var(--r)";
   div.innerHTML='<div style="display:flex;gap:6px;align-items:center">'
-    +'<input type="text" placeholder="外注先名" style="flex:1;padding:6px 8px;font-size:13px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text)">'
+    +'<input type="text" placeholder="外注先名" value="'+(o.name?esc(o.name):'')+'" style="flex:1;padding:6px 8px;font-size:13px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text)" data-oid="'+(o.id||'')+'">'
     +'<button type="button" onclick="removeOutRow(this)" style="padding:4px 10px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--red);cursor:pointer;font-size:13px">×</button>'
     +'</div>'
     +'<div style="display:flex;gap:6px;align-items:center">'
     +'<select onchange="toggleOutRowFields(this)" style="flex:1;padding:6px 8px;font-size:13px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text)">'
-    +'<option value="simple">シンプル（pt × 率%）</option>'
-    +'<option value="abe">FANZA方式（÷1.05×1.1×0.98）</option>'
-    +'<option value="fixed">固定金額</option>'
+    +'<option value="simple"'+(fm==="simple"?" selected":"")+'>シンプル（pt × 率%）</option>'
+    +'<option value="abe"'+(fm==="abe"?" selected":"")+'>FANZA方式（÷1.05×1.1×0.98）</option>'
+    +'<option value="fixed"'+(fm==="fixed"?" selected":"")+'>固定金額</option>'
     +'</select>'
-    +'<input type="number" placeholder="率%" class="out-rate-field" style="width:70px;padding:6px 8px;font-size:13px;text-align:right;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text)">'
-    +'<input type="number" placeholder="金額" class="out-fixed-field" style="width:90px;padding:6px 8px;font-size:13px;text-align:right;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);display:none">'
+    +'<input type="number" placeholder="率%" class="out-rate-field" value="'+(o.rate||'')+'" style="width:70px;padding:6px 8px;font-size:13px;text-align:right;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text)'+(fm==="fixed"?";display:none":"")+'">'
+    +'<input type="number" placeholder="金額" class="out-fixed-field" value="'+(o.fixedAmount||'')+'" style="width:90px;padding:6px 8px;font-size:13px;text-align:right;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text)'+(fm!=="fixed"?";display:none":"")+'">'
     +'</div>';
   wrap.appendChild(div);
-  div.querySelector("input[type=text]").focus();
+  if(!o.name) div.querySelector("input[type=text]").focus();
 }
 function removeOutRow(btn){btn.closest(".out-row").remove();}
 function toggleOutRowFields(sel){
@@ -1932,12 +1927,8 @@ function updateIncModal(){
 function closeMasterModal(){document.getElementById("masterOverlay").classList.remove("show");}
 function saveMasterModal(){
   var type=mModalType,id=mModalId;
-  // 外注新規は複数行UIのため name チェックをスキップ
-  if(!(type==="outsource"&&!id)){
-    var name=(document.getElementById("mm-name")||{}).value||"";
-    if(!name.trim()){alert("名前を入力してください");return;}
-  }
   var name=(document.getElementById("mm-name")||{}).value||"";
+  if(type!=="outsource"&&!name.trim()){alert("名前を入力してください");return;}
 
   if(type==="platform"){
     var rate=parseFloat((document.getElementById("mm-rate")||{}).value)||0;
@@ -1981,25 +1972,24 @@ function saveMasterModal(){
       master.staff=master.staff.concat([Object.assign({id:uid()},newS)]);
     }
   }else if(type==="outsource"){
-    if(id){
-      var orate=parseFloat((document.getElementById("mm-rate")||{}).value)||0;
-      var oformula=(document.getElementById("mm-formula")||{}).value||"simple";
-      var ofixed=parseFloat((document.getElementById("mm-fixed-amount")||{}).value)||0;
-      master.outsource=master.outsource.map(function(o){return o.id===id?Object.assign({},o,{name:name,rate:orate,formula:oformula,fixedAmount:ofixed}):o;});
-    }else{
-      var added=0;
-      document.querySelectorAll("#mm-out-rows .out-row").forEach(function(row){
-        var nm=(row.querySelector("input[type=text]")||{}).value||"";
-        if(!nm.trim())return;
-        var fmEl=row.querySelector("select");
-        var fm=fmEl?fmEl.value:"simple";
-        var rt=parseFloat((row.querySelector(".out-rate-field")||{}).value)||0;
-        var fx=parseFloat((row.querySelector(".out-fixed-field")||{}).value)||0;
+    var added=0;
+    document.querySelectorAll("#mm-out-rows .out-row").forEach(function(row){
+      var nmEl=row.querySelector("input[type=text]");
+      var nm=(nmEl||{}).value||"";
+      if(!nm.trim())return;
+      var oid=nmEl?nmEl.dataset.oid:"";
+      var fmEl=row.querySelector("select");
+      var fm=fmEl?fmEl.value:"simple";
+      var rt=parseFloat((row.querySelector(".out-rate-field")||{}).value)||0;
+      var fx=parseFloat((row.querySelector(".out-fixed-field")||{}).value)||0;
+      if(oid){
+        master.outsource=master.outsource.map(function(o){return o.id===oid?Object.assign({},o,{name:nm.trim(),rate:rt,formula:fm,fixedAmount:fx}):o;});
+      }else{
         master.outsource=master.outsource.concat([{id:uid(),name:nm.trim(),rate:rt,formula:fm,fixedAmount:fx}]);
-        added++;
-      });
-      if(!added){alert("外注先を1件以上入力してください");return;}
-    }
+      }
+      added++;
+    });
+    if(!added){alert("外注先を1件以上入力してください");return;}
   }
 
   scheduleSaveMaster();
