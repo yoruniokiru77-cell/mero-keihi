@@ -1368,13 +1368,21 @@ function renderMasterTab(){
   h+='<div class="card"><div class="ch">🔗 外注マスタ</div>';
   if(master.outsource.length===0){h+='<div class="empty">まだ登録されていません</div>';}
   else{
+    var mGroups={},mGroupOrder=[];
     master.outsource.forEach(function(o){
+      if(!mGroups[o.name]){mGroups[o.name]=[];mGroupOrder.push(o.name);}
+      mGroups[o.name].push(o);
+    });
+    mGroupOrder.forEach(function(gName){
+      var items=mGroups[gName];
+      var subText=items.map(function(o){return (o.item?esc(o.item):'外注報酬')+': '+(o.formula==="fixed"?'¥'+(o.fixedAmount||0).toLocaleString():o.rate+'%');}).join('　');
+      // 編集・削除はグループ内最初のIDを代表として使うが、項目が複数の場合は編集ボタンを1つにまとめる
+      var firstId=items[0].id;
       h+='<div class="master-item">'
-        +'<div class="master-info"><div class="master-name">'+esc(o.name)+(o.item?' › '+esc(o.item):'')+' </div><div class="master-sub">'+(o.formula==="fixed"?'固定 ¥'+(o.fixedAmount||0).toLocaleString():'報酬率 '+o.rate+'%')+'</div></div>'
-        +'<span class="badge-pct">'+(o.formula==="fixed"?'固定':o.rate+'%')+'</span>'
+        +'<div class="master-info"><div class="master-name">'+esc(gName)+'</div><div class="master-sub">'+subText+'</div></div>'
         +'<div class="master-actions">'
-        +'<button class="btn bd" onclick="openMasterModal(\'outsource\',\''+o.id+'\')">編集</button>'
-        +'<button class="btn bs" onclick="deleteMaster(\'outsource\',\''+o.id+'\')">削除</button>'
+        +'<button class="btn bd" onclick="openMasterModal(\'outsource\',\''+firstId+'\')">編集</button>'
+        +(items.length===1?'<button class="btn bs" onclick="deleteMaster(\'outsource\',\''+firstId+'\')">削除</button>':'<button class="btn bs" onclick="deleteMasterGroup(\''+gName+'\')">削除</button>')
         +'</div></div>';
     });
   }
@@ -2038,6 +2046,11 @@ function saveMasterModal(){
   scheduleSaveMaster();
   closeMasterModal();
   render();
+}
+function deleteMasterGroup(gName){
+  if(!confirm(gName+" の外注先をすべて削除しますか？"))return;
+  master.outsource=master.outsource.filter(function(o){return o.name!==gName;});
+  scheduleSaveMaster();render();
 }
 function deleteMaster(type,id){
   if(!confirm("削除しますか？"))return;
