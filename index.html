@@ -466,7 +466,7 @@ function calcMonth(m){
   ((md.staffExtra)||[]).forEach(function(e){stfByS["ex_"+e.id]=e.amount;stfTotal+=e.amount;});
   // 外注報酬
   var outTotal=0,outByO={};
-  master.outsource.forEach(function(o){
+  master.outsource.filter(function(o){return !o.startFrom||m>=o.startFrom;}).forEach(function(o){
     var linked=master.talents.filter(function(t){return t.outsourceId===o.id;});
     var pts;
     if(linked.length>0){
@@ -886,9 +886,9 @@ function renderGaichuu(){
   }else{
     h+='<table class="t"><thead><tr><th>外注先</th><th class="tr" style="width:110px">pt</th><th class="tr" style="width:60px">報酬率</th><th class="tr" style="width:100px">金額</th><th style="width:36px"></th></tr></thead><tbody>';
     var total=0;
-    // o.name でグループ化
+    // o.name でグループ化（開始月フィルタ）
     var groups={},groupOrder=[];
-    master.outsource.forEach(function(o){
+    master.outsource.filter(function(o){return !o.startFrom||currentMonth>=o.startFrom;}).forEach(function(o){
       if(!groups[o.name]){groups[o.name]=[];groupOrder.push(o.name);}
       groups[o.name].push(o);
     });
@@ -1633,6 +1633,7 @@ function addOutRow(o){
     +'<button type="button" onclick="toggleOutType(this)" style="padding:4px 8px;border:1px solid var(--border2);border-radius:var(--r);background:'+(isFixed?'var(--bg3,var(--bg2))':'var(--sky-bg,var(--bg2))')+';color:var(--text);cursor:pointer;font-size:12px;white-space:nowrap">'+(isFixed?'金額':'pt%')+'</button>'
     +'<input type="number" placeholder="率%" class="out-rate-field" value="'+(o.rate||'')+'" style="width:60px;padding:6px 8px;font-size:13px;text-align:right;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text)'+(isFixed?';display:none':'')+'">'
     +'<input type="number" placeholder="金額" class="out-fixed-field" value="'+(o.fixedAmount||'')+'" style="width:80px;padding:6px 8px;font-size:13px;text-align:right;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text)'+(isFixed?'':';display:none')+'">'
+    +'<input type="month" class="out-start-field" value="'+(o.startFrom||'')+'" title="開始月" style="padding:4px 6px;font-size:12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);max-width:130px">'
     +'<button type="button" onclick="removeOutRow(this)" style="padding:4px 8px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--red);cursor:pointer;font-size:13px">×</button>';
   wrap.appendChild(div);
   if(!o.item) div.querySelector("input[type=text]").focus();
@@ -2034,7 +2035,8 @@ function saveMasterModal(){
       var fm=isFixed?"fixed":"simple";
       var rt=parseFloat((row.querySelector(".out-rate-field")||{}).value)||0;
       var fx=parseFloat((row.querySelector(".out-fixed-field")||{}).value)||0;
-      var entry={name:groupName.trim(),item:item.trim(),rate:rt,formula:fm,fixedAmount:fx};
+      var sf=(row.querySelector(".out-start-field")||{}).value||"";
+      var entry={name:groupName.trim(),item:item.trim(),rate:rt,formula:fm,fixedAmount:fx,startFrom:sf};
       if(oid){
         master.outsource=master.outsource.map(function(o){return o.id===oid?Object.assign({},o,entry):o;});
       }else{
