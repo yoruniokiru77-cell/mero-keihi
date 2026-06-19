@@ -886,76 +886,117 @@ function renderGaichuu(){
   }else{
     h+='<table class="t"><thead><tr><th>外注先</th><th class="tr" style="width:110px">pt</th><th class="tr" style="width:60px">報酬率</th><th class="tr" style="width:100px">金額</th><th style="width:36px"></th></tr></thead><tbody>';
     var total=0;
+    // o.name でグループ化
+    var groups={},groupOrder=[];
     master.outsource.forEach(function(o){
-      var linked=master.talents.filter(function(t){return t.outsourceId===o.id;});
-      var hasLinked=linked.length>0;
-      // 紐づきタレントがいる場合はポイントをタレントの合計から自動取得
-      var pts;
-      if(hasLinked){
-        pts=0;
-        linked.forEach(function(t){
-          (t.platforms||[]).forEach(function(pid){
-            var entry=((md.talent||{})[t.id]||{})[pid]||{pts:0,daily:0};
-            pts+=+(entry.pts||0);
+      if(!groups[o.name]){groups[o.name]=[];groupOrder.push(o.name);}
+      groups[o.name].push(o);
+    });
+    groupOrder.forEach(function(gName){
+      var items=groups[gName];
+      var groupTotal=0,groupPts=0,hasPt=false,hasAbe=false,abeId=null;
+      var itemRows=[];
+      items.forEach(function(o){
+        var linked=master.talents.filter(function(t){return t.outsourceId===o.id;});
+        var hasLinked=linked.length>0;
+        var pts;
+        if(hasLinked){
+          pts=0;
+          linked.forEach(function(t){
+            (t.platforms||[]).forEach(function(pid){
+              var entry=((md.talent||{})[t.id]||{})[pid]||{pts:0,daily:0};
+              pts+=+(entry.pts||0);
+            });
           });
-        });
-      }else{
-        pts=+(md.outsource[o.id]||0);
-      }
-      var amt=calcOutAmt(o,pts);
-      var dispAmt=amt,dispRate=o.rate+'%';
-      if(o.formula==="abe"&&hasLinked){
-        var talAmt2=0;
-        linked.forEach(function(lt){
-          (lt.platforms||[]).forEach(function(pid){
-            var lp=master.platforms.find(function(x){return x.id===pid;});
-            if(!lp)return;
-            var lentry=((md.talent||{})[lt.id]||{})[pid]||{pts:0};
-            var lpts=+(lentry.pts||0);
-            var ldaily=getDailyTotal(lentry);
-            var lrate=(lt.rates&&lt.rates[pid]!=null)?lt.rates[pid]:lp.rate;
-            talAmt2+=Math.round((lpts-ldaily)*lrate/100);
+        }else{
+          pts=+(md.outsource[o.id]||0);
+        }
+        var amt=calcOutAmt(o,pts);
+        var dispAmt=amt,dispRate=o.formula==="fixed"?'固定':o.rate+'%';
+        if(o.formula==="abe"&&hasLinked){
+          var talAmt2=0;
+          linked.forEach(function(lt){
+            (lt.platforms||[]).forEach(function(pid){
+              var lp=master.platforms.find(function(x){return x.id===pid;});
+              if(!lp)return;
+              var lentry=((md.talent||{})[lt.id]||{})[pid]||{pts:0};
+              var lpts=+(lentry.pts||0);
+              var ldaily=getDailyTotal(lentry);
+              var lrate=(lt.rates&&lt.rates[pid]!=null)?lt.rates[pid]:lp.rate;
+              talAmt2+=Math.round((lpts-ldaily)*lrate/100);
+            });
           });
-        });
-        dispAmt=Math.max(0,amt-talAmt2);
-        dispRate='27%';
-      }
-      total+=dispAmt;
-      var ptCell=hasLinked
-        ?'<td class="tr" style="color:var(--text2)">'+pts.toLocaleString()+'<br><span style="font-size:11px">（合計）</span></td>'
-        :'<td class="tr"><input type="number" value="'+(md.outsource[o.id]||"")+'" placeholder="0" style="width:90px;padding:5px 8px;font-size:14px;text-align:right" onchange="setOutPt(\''+o.id+'\',this.value)"></td>';
-      h+='<tr><td class="fw">'+esc(o.name)+'</td>';
-      h+=ptCell;
-      h+='<td class="tr">'+dispRate+'</td>';
-      h+='<td class="tr fw" id="out-'+o.id+'">'+yen(dispAmt)+'</td>'
-        +'<td style="white-space:nowrap;padding:4px 6px">'
-        +(o.formula==="abe"?'<button class="btn be" onclick="openPaymentNotice(\''+o.id+'\')" title="支払通知書">🖨️</button>':'')
-        +'</td></tr>';
-      // 業務委託タレント一覧（アコーディオン）
-      if(hasLinked){
-        h+='<tr><td colspan="4" style="padding:0">'
-          +'<div style="padding:4px 10px;background:var(--bg2);border-bottom:1px solid var(--border)">'
-          +'<button onclick="toggleOutDetail(\'od-'+o.id+'\')" data-orig-text="▶ 明細を表示（'+linked.length+'件）" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text2);font-family:inherit">▶ 明細を表示（'+linked.length+'件）</button>'
+          dispAmt=Math.max(0,amt-talAmt2);
+          dispRate='27%';
+          hasAbe=true;abeId=o.id;
+        }
+        if(o.formula!=="fixed"){hasPt=true;groupPts+=pts;}
+        groupTotal+=dispAmt;
+        itemRows.push({o:o,pts:pts,dispAmt:dispAmt,dispRate:dispRate,hasLinked:hasLinked,linked:linked});
+      });
+      total+=groupTotal;
+      // グループ集計行
+      var ptCell=hasPt
+        ?'<td class="tr" style="color:var(--text2)">'+groupPts.toLocaleString()+(items.some(function(o){return master.talents.some(function(t){return t.outsourceId===o.id;});})? '<br><span style="font-size:11px">（合計）</span>':'')+' </td>'
+        :'<td class="tr" style="color:var(--text3)">—</td>';
+      var rateCell=items.length===1?'<td class="tr">'+itemRows[0].dispRate+'</td>':'<td class="tr" style="font-size:11px;color:var(--text3)">複数</td>';
+      h+='<tr><td class="fw">'+esc(gName)+'</td>'+ptCell+rateCell
+        +'<td class="tr fw">'+yen(groupTotal)+'</td>'
+        +'<td style="white-space:nowrap;padding:4px 6px">'+(hasAbe?'<button class="btn be" onclick="openPaymentNotice(\''+abeId+'\')" title="支払通知書">🖨️</button>':'')+'</td></tr>';
+      // 明細アコーディオン（複数項目またはタレント紐づきあり）
+      var detailCount=itemRows.reduce(function(n,r){return n+(r.hasLinked?r.linked.length:1);},0);
+      if(items.length>1||itemRows.some(function(r){return r.hasLinked;})){
+        var odId='od-g-'+gName.replace(/\s/g,'_');
+        h+='<tr><td colspan="5" style="padding:0"><div style="padding:4px 10px;background:var(--bg2);border-bottom:1px solid var(--border)">'
+          +'<button onclick="toggleOutDetail(\''+odId+'\')" data-orig-text="▶ 明細を表示（'+detailCount+'件）" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text2);font-family:inherit">▶ 明細を表示（'+detailCount+'件）</button>'
           +'</div></td></tr>';
-        h+='<tr id="od-'+o.id+'" style="display:none"><td colspan="4" style="padding:0">';
-        h+='<table class="t" style="margin:0">';
-        linked.forEach(function(t){
-          var tpts=0,tamt=0;
-          (t.platforms||[]).forEach(function(pid){
-            var p=master.platforms.find(function(x){return x.id===pid;});
-            if(!p)return;
-            var entry=((md.talent||{})[t.id]||{})[pid]||{pts:0,daily:0};
-            var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
-            tpts+=+(entry.pts||0);
-            tamt+=Math.round((+(entry.pts||0)-+(entry.daily||0))*rate/100);
-          });
-          h+='<tr style="background:var(--bg2)">'
-            +'<td style="padding-left:16px;font-size:13px">└ '+(t.realName?esc(t.realName)+' ('+esc(t.name)+')':esc(t.name))+'</td>'
-            +'<td class="tr" style="font-size:13px;color:var(--text2)">'+tpts.toLocaleString()+'pt</td>'
-            +'<td class="tr" style="font-size:12px;color:var(--text2)">報酬</td>'
-            +'<td class="tr fw" style="color:var(--text2)">'+yen(tamt)+'</td></tr>';
+        h+='<tr id="'+odId+'" style="display:none"><td colspan="5" style="padding:0"><table class="t" style="margin:0">';
+        itemRows.forEach(function(r){
+          var o=r.o;
+          var itemLabel=o.item?esc(o.item):(o.formula==="fixed"?'固定':'外注報酬');
+          if(r.hasLinked){
+            h+='<tr style="background:var(--bg2)"><td style="padding-left:12px;font-size:13px;font-weight:600" colspan="3">'+itemLabel+'</td><td class="tr fw" style="color:var(--text2)">'+yen(r.dispAmt)+'</td><td></td></tr>';
+            r.linked.forEach(function(t){
+              var tpts=0,tamt=0;
+              (t.platforms||[]).forEach(function(pid){
+                var p=master.platforms.find(function(x){return x.id===pid;});
+                if(!p)return;
+                var entry=((md.talent||{})[t.id]||{})[pid]||{pts:0,daily:0};
+                var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
+                tpts+=+(entry.pts||0);
+                tamt+=Math.round((+(entry.pts||0)-+(entry.daily||0))*rate/100);
+              });
+              h+='<tr style="background:var(--bg2)"><td style="padding-left:24px;font-size:13px">└ '+(t.realName?esc(t.realName)+' ('+esc(t.name)+')':esc(t.name))+'</td>'
+                +'<td class="tr" style="font-size:13px;color:var(--text2)">'+tpts.toLocaleString()+'pt</td>'
+                +'<td class="tr" style="font-size:12px;color:var(--text2)">報酬</td>'
+                +'<td class="tr fw" style="color:var(--text2)">'+yen(tamt)+'</td><td></td></tr>';
+            });
+          }else{
+            var ptCellD=o.formula==="fixed"
+              ?'<td class="tr" style="color:var(--text3)">—</td>'
+              :'<td class="tr"><input type="number" value="'+(md.outsource[o.id]||"")+'" placeholder="0" style="width:80px;padding:4px 6px;font-size:13px;text-align:right" onchange="setOutPt(\''+o.id+'\',this.value)"></td>';
+            h+='<tr style="background:var(--bg2)"><td style="padding-left:12px;font-size:13px">'+itemLabel+'</td>'
+              +ptCellD
+              +'<td class="tr" style="font-size:12px;color:var(--text2)">'+r.dispRate+'</td>'
+              +'<td class="tr fw" style="color:var(--text2)" id="out-'+o.id+'">'+yen(r.dispAmt)+'</td><td></td></tr>';
+          }
         });
         h+='</table></td></tr>';
+      }else{
+        // 単一項目・非タレント紐づきの場合は pt入力をグループ行に表示
+        var o=itemRows[0].o;
+        if(o.formula!=="fixed"&&!itemRows[0].hasLinked){
+          // 既に ptCell に表示されているが input が必要な場合は行を差し替える
+          // → グループ行の ptCell を input に変更するため再描画が必要。
+          // 簡易対応: 明細行1行で input を出す
+          var odId2='od-g-'+gName.replace(/\s/g,'_');
+          h+='<tr id="'+odId2+'" style="display:none"><td colspan="5" style="padding:0"><table class="t" style="margin:0">';
+          h+='<tr style="background:var(--bg2)"><td style="padding-left:12px;font-size:13px">'+(o.item?esc(o.item):'外注報酬')+'</td>'
+            +'<td class="tr"><input type="number" value="'+(md.outsource[o.id]||"")+'" placeholder="0" style="width:80px;padding:4px 6px;font-size:13px;text-align:right" onchange="setOutPt(\''+o.id+'\',this.value)"></td>'
+            +'<td class="tr" style="font-size:12px">'+o.rate+'%</td>'
+            +'<td class="tr fw" id="out-'+o.id+'">'+yen(itemRows[0].dispAmt)+'</td><td></td></tr>';
+          h+='</table></td></tr>';
+        }
       }
     });
     h+='<tr class="trow"><td colspan="3">外注報酬合計</td><td class="tr">'+yen(total)+'</td></tr>';
