@@ -1458,7 +1458,7 @@ function getBmCode(){
     +'}'
     +'if(charId&&pts>0&&!seen[charId]){seen[charId]=1;out.push({charId:charId,name:name,pts:pts});}'
     +'});'
-    +'if(out.length>0)return out;'
+    +'if(out.length>1)return out;'
     // Approach 2: two-table index matching fallback
     +'var tbls=Array.from(document.querySelectorAll(\'table\'));'
     +'var idRows=null;'
