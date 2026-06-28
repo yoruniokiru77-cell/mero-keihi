@@ -2115,7 +2115,7 @@ function autoCarryForward(){
 }
 function calcOutAmt(o,pts){
   if(o.formula==="fixed") return o.fixedAmount||0;
-  if(o.formula==="abe") return Math.round(pts*o.rate/100/1.05*1.1*0.98);
+  if(o.formula==="abe") return Math.round(pts*0.57/1.05*1.1*0.98);
   return Math.round(pts*o.rate/100);
 }
 function calcIncAmt(p,pts){
