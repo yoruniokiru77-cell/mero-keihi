@@ -656,7 +656,7 @@ function renderTalent(){
         var hoshoAmt=getHoshoTotal(entry);
         var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
         var grossAmt=Math.round(pts*rate/100);
-        var amt=grossAmt-dailyTotal-ryouhiTotal+hoshoAmt;
+        var amt=grossAmt-dailyTotal-ryouhiTotal;
         tTotal+=amt;
         tTotalForGrand+=(grossAmt-dailyTotal);
         tGross+=grossAmt;tDailyDeduct+=dailyTotal;tRyouhiDeduct+=ryouhiTotal;tHosho+=hoshoAmt;grandPts+=pts;
@@ -846,15 +846,15 @@ function updateTalentAmt(tid,pid,md){
   var entry=md.talent[tid][pid]||{pts:0};
   var pts=+(entry.pts||0),dailyTotal=getDailyTotal(entry);
   var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
-  var amt=Math.round(pts*rate/100)-dailyTotal-getRyouhiTotal(entry)+getHoshoTotal(entry);
+  var amt=Math.round(pts*rate/100)-dailyTotal-getRyouhiTotal(entry);
   var el=document.getElementById("ta-"+tid+"-"+pid);if(el)el.textContent=yen(amt);
   var tTotal=0;
   (t.platforms||[]).forEach(function(p2id){
     var pp=master.platforms.find(function(x){return x.id===p2id;});if(!pp)return;
     var e2=(md.talent[tid]&&md.talent[tid][p2id])||{pts:0};
     var r2=(t.rates&&t.rates[p2id]!=null)?t.rates[p2id]:pp.rate;
-    var e2g=getDailyTotal(e2),e2r=getRyouhiTotal(e2),e2h=getHoshoTotal(e2);
-    tTotal+=Math.round(+(e2.pts||0)*r2/100)-e2g-e2r+e2h;
+    var e2g=getDailyTotal(e2),e2r=getRyouhiTotal(e2);
+    tTotal+=Math.round(+(e2.pts||0)*r2/100)-e2g-e2r;
   });
   var el3=document.getElementById("tt-"+tid);if(el3)el3.textContent=yen(tTotal);
 }
