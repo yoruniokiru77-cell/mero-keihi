@@ -636,7 +636,7 @@ function renderTalent(){
   var grandTotal=0,grandGross=0,grandDeduct=0,grandRyouhi=0,grandTotalForGrand=0;
   master.talents.filter(function(t){return !t.retiredFrom||currentMonth<t.retiredFrom;}).forEach(function(t){
     var tData=md.talent[t.id]||{};
-    var tTotal=0,tTotalForGrand=0;
+    var tTotal=0,tTotalForGrand=0,tGross=0,tDailyDeduct=0,tRyouhiDeduct=0;
     var oName=t.outsourceId?(function(){var o=master.outsource.find(function(x){return x.id===t.outsourceId;});return o?o.name:"";})():"";
     h+='<div class="card">';
     h+='<div class="talent-name">'+(t.realName?esc(t.realName)+' <span style="font-size:13px;font-weight:400;color:var(--text2)">（'+esc(t.name)+'）</span>':esc(t.name))+'</div>';
@@ -657,6 +657,7 @@ function renderTalent(){
         var amt=grossAmt-dailyTotal-ryouhiTotal;
         tTotal+=amt;
         tTotalForGrand+=(grossAmt-dailyTotal);
+        tGross+=grossAmt;tDailyDeduct+=dailyTotal;tRyouhiDeduct+=ryouhiTotal;
         var dailyEntries=entry.dailyEntries||(entry.daily?[{date:"",amount:+(entry.daily||0)}]:[]);
         var ryouhiEntries=entry.ryouhiEntries||[];
         h+='<div class="chat-grid">';
@@ -717,9 +718,9 @@ function renderTalent(){
       +'</div></div>';
     h+='</div>';
     grandTotal+=tTotalForGrand;
-    grandGross+=grossTotal;
-    grandDeduct+=dailyDeductTotal;
-    grandRyouhi+=ryouhiDeductTotal;
+    grandGross+=tGross;
+    grandDeduct+=tDailyDeduct;
+    grandRyouhi+=tRyouhiDeduct;
   });
   h+='<div class="pbar"><div>'
     +'<div style="font-size:15px;font-weight:700">タレント報酬合計</div>'
