@@ -1573,8 +1573,8 @@ function getBmCode(){
     // Also save total pts to income
     +'if(ok>0){'
     +'var totalPts=0;'
-    +'Object.keys(md.talent).forEach(function(tid){'
-    +'if(md.talent[tid][pid])totalPts+=md.talent[tid][pid].pts||0;'
+    +'master.talents.filter(function(t){return !t.retiredFrom||mk<t.retiredFrom;}).forEach(function(t){'
+    +'if(md.talent[t.id]&&md.talent[t.id][pid])totalPts+=md.talent[t.id][pid].pts||0;'
     +'});'
     +'if(!md.income)md.income={};'
     +'md.income[pid]=totalPts;'
