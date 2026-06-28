@@ -1055,8 +1055,8 @@ function renderGaichuu(){
                 +'<td class="tr fw" style="color:var(--text2)">'+yen(tamt)+'</td><td></td></tr>';
             });
             if(o.formula==="abe"){
-              h+='<tr style="background:var(--bg2)"><td style="padding-left:12px;font-size:13px;color:var(--text3)" colspan="3">外注報酬合計</td>'
-                +'<td class="tr fw" style="color:var(--text3)">'+yen(linkedTotal)+'</td><td></td></tr>';
+              h+='<tr style="background:var(--bg2)"><td style="padding-left:12px;font-size:13px;font-weight:600;color:var(--text2)" colspan="3">外注報酬合計</td>'
+                +'<td class="tr fw" style="color:var(--text2)">'+yen(r.dispAmt+linkedTotal)+'</td><td></td></tr>';
             }
           }else{
             var ptCellD=o.formula==="fixed"
