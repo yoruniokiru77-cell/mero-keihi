@@ -633,7 +633,7 @@ function renderTalent(){
     h='<div class="card"><div class="empty">⚙️ マスタでタレントを登録してください</div></div>';
     return h;
   }
-  var grandTotal=0,grandGross=0,grandDeduct=0,grandTotalForGrand=0;
+  var grandTotal=0,grandGross=0,grandDeduct=0,grandRyouhi=0,grandTotalForGrand=0;
   master.talents.filter(function(t){return !t.retiredFrom||currentMonth<t.retiredFrom;}).forEach(function(t){
     var tData=md.talent[t.id]||{};
     var tTotal=0,tTotalForGrand=0;
@@ -719,10 +719,11 @@ function renderTalent(){
     grandTotal+=tTotalForGrand;
     grandGross+=grossTotal;
     grandDeduct+=dailyDeductTotal;
+    grandRyouhi+=ryouhiDeductTotal;
   });
   h+='<div class="pbar"><div>'
     +'<div style="font-size:15px;font-weight:700">タレント報酬合計</div>'
-    +(grandDeduct>0?'<div style="font-size:12px;color:var(--text3);margin-top:2px">日払い合計 −'+yen(grandDeduct)+'　差引後 '+yen(grandGross-grandDeduct)+'</div>':'')
+    +((grandDeduct>0||grandRyouhi>0)?'<div style="font-size:12px;color:var(--text3);margin-top:2px">'+(grandDeduct>0?'日払い −'+yen(grandDeduct)+'　':'')+(grandRyouhi>0?'寮費 −'+yen(grandRyouhi)+'　':'')+'差引後 '+yen(grandGross-grandDeduct-grandRyouhi)+'</div>':'')
     +'</div><span style="font-size:22px;font-weight:800;color:var(--red)">'+yen(grandGross||grandTotal)+'</span></div>';
   if(lk) return '<div style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:var(--r);padding:8px 14px;margin-bottom:12px;font-size:13px;text-align:center">🔒 ロック中 — 編集するには解除してください</div><div inert style="opacity:0.65">'+h+'</div>';
   return h;
