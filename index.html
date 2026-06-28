@@ -566,7 +566,7 @@ function renderShuushi(){
       h+='<td class="tr">'+pLabel+'</td>';
       h+='<td class="tr fw" style="color:var(--blue)" id="inc-amt-'+p.id+'">'+yen(c.incByP[p.id]||0)+'</td></tr>';
     });
-    (c.noticeIncomeItems||[]).filter(function(item){return item.itemName!=="寮費";}).forEach(function(item){
+    (c.noticeIncomeItems||[]).forEach(function(item){
       h+='<tr><td class="fw" colspan="2">'+esc(item.talentName)+' '+esc(item.itemName)+'</td>'
         +'<td class="tr" style="color:var(--text2)">控除収入</td>'
         +'<td class="tr fw" style="color:var(--blue)">'+yen(item.amount)+'</td></tr>';
@@ -2087,8 +2087,18 @@ function saveMasterModal(){
   }else if(type==="outsource"){
     var groupName=(document.getElementById("mm-out-group")||{}).value||"";
     if(!groupName.trim()){alert("外注先名を入力してください");return;}
-    var added=0;
-    document.querySelectorAll("#mm-out-rows .out-row").forEach(function(row){
+    var rows=document.querySelectorAll("#mm-out-rows .out-row");
+    if(!rows.length){alert("項目を1件以上入力してください");return;}
+    // 旧グループ名を取得（編集時のみ）
+    var oldGroupName=id?(master.outsource.find(function(x){return x.id===id;})||{}).name||"":"";
+    // 既存エントリのid→オブジェクトのマップを保持
+    var oldMap={};
+    master.outsource.forEach(function(o){oldMap[o.id]=o;});
+    // グループ（旧名）のエントリを一旦削除し、他のエントリは保持
+    var removeGroupName=oldGroupName||groupName.trim();
+    master.outsource=master.outsource.filter(function(o){return o.name!==removeGroupName;});
+    // DOM の残行を追加し直す
+    rows.forEach(function(row){
       var nmEl=row.querySelector("input[type=text]");
       var item=(nmEl||{}).value||"";
       var oid=nmEl?nmEl.dataset.oid:"";
@@ -2099,14 +2109,9 @@ function saveMasterModal(){
       var fx=parseFloat((row.querySelector(".out-fixed-field")||{}).value)||0;
       var sf=(row.querySelector(".out-start-field")||{}).value||"";
       var entry={name:groupName.trim(),item:item.trim(),rate:rt,formula:fm,fixedAmount:fx,startFrom:sf};
-      if(oid){
-        master.outsource=master.outsource.map(function(o){return o.id===oid?Object.assign({},o,entry):o;});
-      }else{
-        master.outsource=master.outsource.concat([Object.assign({id:uid()},entry)]);
-      }
-      added++;
+      var existId=(oid&&oldMap[oid])?oid:uid();
+      master.outsource=master.outsource.concat([Object.assign({id:existId},entry)]);
     });
-    if(!added){alert("項目を1件以上入力してください");return;}
   }
 
   scheduleSaveMaster();
