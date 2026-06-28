@@ -669,10 +669,12 @@ function renderTalent(){
         h+='<div class="daily-section">';
         h+='<div style="font-size:12px;color:var(--text2);font-weight:600;margin-bottom:6px">日払い合計</div>';
         h+='<div id="daily-rows-'+t.id+'-'+pid+'">';
+        var staffOpts='<option value="">担当</option>'+master.staff.map(function(s){return'<option value="'+esc(s.name)+'">'+esc(s.name)+'</option>';}).join('');
         dailyEntries.forEach(function(de,idx){
           h+='<div class="daily-row">'
             +'<input type="date" value="'+(de.date||"")+'" onchange="setDailyDate(\''+t.id+'\',\''+pid+'\','+idx+',this.value)">'
             +'¥<input type="number" value="'+(de.amount||de.pts||"")+'" placeholder="0" onchange="setDailyAmt(\''+t.id+'\',\''+pid+'\','+idx+',this.value)">'
+            +'<select style="padding:3px 4px;font-size:12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);max-width:80px" onchange="setDailyStaff(\''+t.id+'\',\''+pid+'\','+idx+',this.value)">'+staffOpts.replace('value="'+(de.staff||'')+'">','value="'+(de.staff||'')+'" selected>')+('</select>')
             +'<button class="btn bs" style="padding:2px 6px;font-size:12px" onclick="removeDailyEntry(\''+t.id+'\',\''+pid+'\','+idx+')">✕</button>'
             +'</div>';
         });
@@ -793,6 +795,12 @@ function setDailyDate(tid,pid,idx,val){
   var md=getMonth(currentMonth);
   if(!md.talent[tid][pid].dailyEntries)return;
   md.talent[tid][pid].dailyEntries[idx].date=val;
+  setMonth(currentMonth,md);
+}
+function setDailyStaff(tid,pid,idx,val){
+  var md=getMonth(currentMonth);
+  if(!md.talent||!md.talent[tid]||!md.talent[tid][pid]||!md.talent[tid][pid].dailyEntries)return;
+  md.talent[tid][pid].dailyEntries[idx].staff=val;
   setMonth(currentMonth,md);
 }
 function updateTalentAmt(tid,pid,md){
