@@ -627,6 +627,7 @@ function setIncomePt(pid,val){
 /* ===== タレントタブ ===== */
 function renderTalent(){
   var lk=isLocked();
+  autoCarryForward();
   var md=getMonth(currentMonth);
   var h=lk?'':'<div style="display:flex;justify-content:flex-end;margin-bottom:10px"><button class="btn be" onclick="sendLineNoticeAll()" style="background:#06c755;color:#fff;font-size:13px;padding:8px 16px">📤 LINE一括送信</button></div>';
   if(master.talents.length===0){
@@ -636,7 +637,7 @@ function renderTalent(){
   var grandTotal=0,grandGross=0,grandDeduct=0,grandRyouhi=0,grandTotalForGrand=0,grandPts=0;
   master.talents.filter(function(t){return !t.retiredFrom||currentMonth<t.retiredFrom;}).forEach(function(t){
     var tData=md.talent[t.id]||{};
-    var tTotal=0,tTotalForGrand=0,tGross=0,tDailyDeduct=0,tRyouhiDeduct=0;
+    var tTotal=0,tTotalForGrand=0,tGross=0,tDailyDeduct=0,tRyouhiDeduct=0,tHosho=0;
     var oName=t.outsourceId?(function(){var o=master.outsource.find(function(x){return x.id===t.outsourceId;});return o?o.name:"";})():"";
     h+='<div class="card">';
     h+='<div class="talent-name">'+(t.realName?esc(t.realName)+' <span style="font-size:13px;font-weight:400;color:var(--text2)">（'+esc(t.name)+'）</span>':esc(t.name))+'</div>';
@@ -652,12 +653,13 @@ function renderTalent(){
         var pts=+(entry.pts||0);
         var dailyTotal=getDailyTotal(entry);
         var ryouhiTotal=getRyouhiTotal(entry);
+        var hoshoAmt=getHoshoTotal(entry);
         var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
         var grossAmt=Math.round(pts*rate/100);
-        var amt=grossAmt-dailyTotal-ryouhiTotal;
+        var amt=grossAmt-dailyTotal-ryouhiTotal+hoshoAmt;
         tTotal+=amt;
         tTotalForGrand+=(grossAmt-dailyTotal);
-        tGross+=grossAmt;tDailyDeduct+=dailyTotal;tRyouhiDeduct+=ryouhiTotal;grandPts+=pts;
+        tGross+=grossAmt;tDailyDeduct+=dailyTotal;tRyouhiDeduct+=ryouhiTotal;tHosho+=hoshoAmt;grandPts+=pts;
         var dailyEntries=entry.dailyEntries||(entry.daily?[{date:"",amount:+(entry.daily||0)}]:[]);
         var ryouhiEntries=entry.ryouhiEntries||[];
         h+='<div class="chat-grid">';
@@ -692,20 +694,24 @@ function renderTalent(){
         });
         h+='</div>';
         h+='<button class="daily-add" onclick="addRyouhiEntry(\''+t.id+'\',\''+pid+'\')">＋ 寮費を追加</button>';
+        var hoshoEntries=entry.hoshoEntries||[];
+        h+='<div style="margin-top:10px">';
+        h+='<div style="font-size:12px;color:var(--text2);font-weight:600;margin-bottom:6px">補助</div>';
+        h+='<div id="hosho-rows-'+t.id+'-'+pid+'">';
+        hoshoEntries.forEach(function(he,idx){
+          h+='<div class="daily-row">'
+            +'<input type="date" value="'+(he.date||"")+'" onchange="setHoshoDate(\''+t.id+'\',\''+pid+'\','+idx+',this.value)">'
+            +'¥<input type="number" value="'+(he.amount||"")+'" placeholder="0" onchange="setHoshoAmt(\''+t.id+'\',\''+pid+'\','+idx+',this.value)">'
+            +'<button class="btn bs" style="padding:2px 6px;font-size:12px" onclick="removeHoshoEntry(\''+t.id+'\',\''+pid+'\','+idx+')">✕</button>'
+            +'</div>';
+        });
+        h+='</div>';
+        h+='<button class="daily-add" onclick="addHoshoEntry(\''+t.id+'\',\''+pid+'\')">＋ 補助を追加</button>';
+        h+='</div>';
         h+='</div>';
         h+='</div>';
       });
     }
-    var grossTotal=0,dailyDeductTotal=0,ryouhiDeductTotal=0;
-    (t.platforms||[]).forEach(function(pid2){
-      var p2=master.platforms.find(function(x){return x.id===pid2;});if(!p2)return;
-      var e2=(tData[pid2])||{pts:0};
-      var pts2=+(e2.pts||0),daily2=getDailyTotal(e2),ryouhi2=getRyouhiTotal(e2);
-      var rate2=(t.rates&&t.rates[pid2]!=null)?t.rates[pid2]:p2.rate;
-      grossTotal+=Math.round(pts2*rate2/100);
-      dailyDeductTotal+=daily2;
-      ryouhiDeductTotal+=ryouhi2;
-    });
     h+='<div class="talent-total"><span>報酬合計</span>'
       +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">'
       +'<div style="display:flex;align-items:center;gap:10px">'
@@ -713,9 +719,10 @@ function renderTalent(){
       +'<button class="btn be" onclick="openTalentNotice(\''+t.id+'\')" title="支払通知書" style="background:#6c757d;color:#fff">PDF</button>'
       +'<button class="btn be" onclick="sendLineNotice(\''+t.id+'\')" title="LINE送信" style="background:#06c755;color:#fff">LINE</button>'
       +'</div>'
-      +(dailyDeductTotal>0||ryouhiDeductTotal>0?'<div style="font-size:12px;color:var(--text3);margin-top:2px">'
-        +(dailyDeductTotal>0?'日払い合計 '+yen(dailyDeductTotal)+'　':'')
-        +(ryouhiDeductTotal>0?'寮費合計 '+yen(ryouhiDeductTotal):'')
+      +(tDailyDeduct>0||tRyouhiDeduct>0||tHosho>0?'<div style="font-size:12px;color:var(--text3);margin-top:2px">'
+        +(tDailyDeduct>0?'日払い −'+yen(tDailyDeduct)+'　':'')
+        +(tRyouhiDeduct>0?'寮費 −'+yen(tRyouhiDeduct)+'　':'')
+        +(tHosho>0?'補助 +'+yen(tHosho):'')
         +'</div>':'')
       +'</div></div>';
     h+='</div>';
@@ -792,6 +799,34 @@ function setRyouhiAmt(tid,pid,idx,val){
   setMonth(currentMonth,md);
   updateTalentAmt(tid,pid,md);
 }
+function addHoshoEntry(tid,pid){
+  var md=getMonth(currentMonth);
+  if(!md.talent)md.talent={};
+  if(!md.talent[tid])md.talent[tid]={};
+  if(!md.talent[tid][pid])md.talent[tid][pid]={pts:0};
+  if(!md.talent[tid][pid].hoshoEntries)md.talent[tid][pid].hoshoEntries=[];
+  md.talent[tid][pid].hoshoEntries=md.talent[tid][pid].hoshoEntries.concat([{date:"",amount:0}]);
+  setMonth(currentMonth,md);renderTalent2();
+}
+function removeHoshoEntry(tid,pid,idx){
+  var md=getMonth(currentMonth);
+  md.talent[tid][pid].hoshoEntries=md.talent[tid][pid].hoshoEntries.filter(function(_,i){return i!==idx;});
+  setMonth(currentMonth,md);renderTalent2();
+}
+function setHoshoDate(tid,pid,idx,val){
+  var md=getMonth(currentMonth);
+  if(!md.talent[tid][pid].hoshoEntries)return;
+  md.talent[tid][pid].hoshoEntries[idx].date=val;
+  setMonth(currentMonth,md);
+}
+function setHoshoAmt(tid,pid,idx,val){
+  var md=getMonth(currentMonth);
+  if(!md.talent||!md.talent[tid]||!md.talent[tid][pid])return;
+  if(!md.talent[tid][pid].hoshoEntries)return;
+  md.talent[tid][pid].hoshoEntries[idx].amount=parseFloat(val)||0;
+  setMonth(currentMonth,md);
+  updateTalentAmt(tid,pid,md);
+}
 function setDailyDate(tid,pid,idx,val){
   var md=getMonth(currentMonth);
   if(!md.talent[tid][pid].dailyEntries)return;
@@ -811,14 +846,15 @@ function updateTalentAmt(tid,pid,md){
   var entry=md.talent[tid][pid]||{pts:0};
   var pts=+(entry.pts||0),dailyTotal=getDailyTotal(entry);
   var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
-  var amt=Math.round(pts*rate/100)-dailyTotal-getRyouhiTotal(entry);
+  var amt=Math.round(pts*rate/100)-dailyTotal-getRyouhiTotal(entry)+getHoshoTotal(entry);
   var el=document.getElementById("ta-"+tid+"-"+pid);if(el)el.textContent=yen(amt);
   var tTotal=0;
   (t.platforms||[]).forEach(function(p2id){
     var pp=master.platforms.find(function(x){return x.id===p2id;});if(!pp)return;
     var e2=(md.talent[tid]&&md.talent[tid][p2id])||{pts:0};
     var r2=(t.rates&&t.rates[p2id]!=null)?t.rates[p2id]:pp.rate;
-    var e2g=getDailyTotal(e2),e2r=getRyouhiTotal(e2);tTotal+=Math.round(+(e2.pts||0)*r2/100)-e2g-e2r;
+    var e2g=getDailyTotal(e2),e2r=getRyouhiTotal(e2),e2h=getHoshoTotal(e2);
+    tTotal+=Math.round(+(e2.pts||0)*r2/100)-e2g-e2r+e2h;
   });
   var el3=document.getElementById("tt-"+tid);if(el3)el3.textContent=yen(tTotal);
 }
@@ -1898,8 +1934,9 @@ function openTalentNotice(tid){
     var grossAmt=Math.round(pts*rate/100);
     var dailyTotal=getDailyTotal(entry);
     var ryouhiTotal=getRyouhiTotal(entry);
-    grandTotal+=grossAmt-dailyTotal-ryouhiTotal;
-    rows.push({name:esc(pl.name)+' '+m+'月分',pts:+(entry.pts||0),rate:rate,amt:grossAmt,dailyTotal:dailyTotal,ryouhiTotal:ryouhiTotal,dailyEntries:entry.dailyEntries||[]});
+    var hoshoTotal=getHoshoTotal(entry);
+    grandTotal+=grossAmt-dailyTotal-ryouhiTotal+hoshoTotal;
+    rows.push({name:esc(pl.name)+' '+m+'月分',pts:+(entry.pts||0),rate:rate,amt:grossAmt,dailyTotal:dailyTotal,ryouhiTotal:ryouhiTotal,hoshoTotal:hoshoTotal,dailyEntries:entry.dailyEntries||[],hoshoEntries:entry.hoshoEntries||[]});
   });
   var h=buildNoticeHeader(dateStr,name,'給料明細',false);
   // 外注があれば後で加算するのでプレースホルダーIDを使う
@@ -1933,6 +1970,10 @@ function openTalentNotice(tid){
     if(r.ryouhiTotal>0){
       h+='<tr><td colspan="3" style="padding:6px 8px;border:1px solid #ccc;padding-left:20px;color:#c00">寮費控除</td>'
         +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right;color:#c00">−¥'+r.ryouhiTotal.toLocaleString()+'</td></tr>';
+    }
+    if(r.hoshoTotal>0){
+      h+='<tr><td colspan="3" style="padding:6px 8px;border:1px solid #ccc;padding-left:20px;color:#080">補助</td>'
+        +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right;color:#080">+¥'+r.hoshoTotal.toLocaleString()+'</td></tr>';
     }
   });
   var tNames=[t.name,t.realName].filter(Boolean);
@@ -2042,6 +2083,35 @@ function getDailyTotal(entry){
 function getRyouhiTotal(entry){
   if(!entry.ryouhiEntries||!entry.ryouhiEntries.length)return 0;
   return entry.ryouhiEntries.reduce(function(s,e){return s+(+(e.amount||0));},0);
+}
+function getHoshoTotal(entry){
+  if(!entry.hoshoEntries||!entry.hoshoEntries.length)return 0;
+  return entry.hoshoEntries.reduce(function(s,e){return s+(+(e.amount||0));},0);
+}
+function autoCarryForward(){
+  var p=currentMonth.split("-");var y=+p[0],m=+p[1];
+  m--;if(m<1){m=12;y--;}
+  var prevMonth=y+"-"+String(m).padStart(2,"0");
+  var prevMd=monthly[prevMonth];
+  if(!prevMd||!prevMd.talent)return;
+  var curMd=getMonth(currentMonth);
+  var changed=false;
+  master.talents.forEach(function(t){
+    (t.platforms||[]).forEach(function(pid){
+      var prevEntry=(prevMd.talent[t.id]||{})[pid]||{};
+      if(!curMd.talent)curMd.talent={};
+      if(!curMd.talent[t.id])curMd.talent[t.id]={};
+      if(!curMd.talent[t.id][pid])curMd.talent[t.id][pid]={pts:0};
+      var cur=curMd.talent[t.id][pid];
+      if((!cur.ryouhiEntries||!cur.ryouhiEntries.length)&&prevEntry.ryouhiEntries&&prevEntry.ryouhiEntries.length){
+        cur.ryouhiEntries=prevEntry.ryouhiEntries.map(function(e){return Object.assign({},e);});changed=true;
+      }
+      if((!cur.hoshoEntries||!cur.hoshoEntries.length)&&prevEntry.hoshoEntries&&prevEntry.hoshoEntries.length){
+        cur.hoshoEntries=prevEntry.hoshoEntries.map(function(e){return Object.assign({},e);});changed=true;
+      }
+    });
+  });
+  if(changed)setMonth(currentMonth,curMd);
 }
 function calcOutAmt(o,pts){
   if(o.formula==="fixed") return o.fixedAmount||0;
