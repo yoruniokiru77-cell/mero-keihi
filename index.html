@@ -1895,9 +1895,11 @@ function openTalentNotice(tid){
     var entry=((md.talent||{})[t.id]||{})[pid]||{pts:0};
     var pts=+(entry.pts||0);
     var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:pl.rate;
-    var amt=Math.round(pts*rate/100)-getDailyTotal(entry)-getRyouhiTotal(entry);
-    grandTotal+=amt;
-    rows.push({name:esc(pl.name)+' '+m+'月分',pts:+(entry.pts||0),rate:rate,amt:amt});
+    var grossAmt=Math.round(pts*rate/100);
+    var dailyTotal=getDailyTotal(entry);
+    var ryouhiTotal=getRyouhiTotal(entry);
+    grandTotal+=grossAmt-dailyTotal-ryouhiTotal;
+    rows.push({name:esc(pl.name)+' '+m+'月分',pts:+(entry.pts||0),rate:rate,amt:grossAmt,dailyTotal:dailyTotal,ryouhiTotal:ryouhiTotal,dailyEntries:entry.dailyEntries||[]});
   });
   var h=buildNoticeHeader(dateStr,name,'給料明細',false);
   // 外注があれば後で加算するのでプレースホルダーIDを使う
@@ -1919,6 +1921,19 @@ function openTalentNotice(tid){
       +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right">'+r.pts.toLocaleString()+'pt</td>'
       +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:center">'+r.rate+'%</td>'
       +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right">¥'+r.amt.toLocaleString()+'</td></tr>';
+    if(r.dailyTotal>0){
+      var dLabel='日払い';
+      if(r.dailyEntries&&r.dailyEntries.length){
+        var parts=r.dailyEntries.map(function(de){return(de.date?de.date.slice(5).replace('-','/'):'')+(de.staff?' ('+de.staff+')':'')+(de.amount?' ¥'+(+de.amount).toLocaleString():'');});
+        dLabel='日払い（'+parts.join('、')+'）';
+      }
+      h+='<tr><td colspan="3" style="padding:6px 8px;border:1px solid #ccc;padding-left:20px;color:#c00">'+dLabel+'</td>'
+        +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right;color:#c00">−¥'+r.dailyTotal.toLocaleString()+'</td></tr>';
+    }
+    if(r.ryouhiTotal>0){
+      h+='<tr><td colspan="3" style="padding:6px 8px;border:1px solid #ccc;padding-left:20px;color:#c00">寮費控除</td>'
+        +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right;color:#c00">−¥'+r.ryouhiTotal.toLocaleString()+'</td></tr>';
+    }
   });
   var tNames=[t.name,t.realName].filter(Boolean);
   master.outsource.forEach(function(o2){
