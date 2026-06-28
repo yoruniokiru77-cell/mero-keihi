@@ -259,22 +259,6 @@ input[type=number]{text-align:right}
   </div>
 </div>
 
-<!-- 日払い立替選択ポップアップ -->
-<div class="overlay" id="dailyExpOverlay" onclick="if(event.target===this)closeDailyExpPopup()">
-  <div class="modal" style="max-width:320px;padding:20px">
-    <div style="font-size:15px;font-weight:700;margin-bottom:6px">日払い経費を登録</div>
-    <div id="dailyExpInfo" style="font-size:13px;color:var(--text2);margin-bottom:14px"></div>
-    <div style="font-size:13px;font-weight:600;margin-bottom:8px">立替</div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <button class="btn bp" style="text-align:left" onclick="confirmDailyExp('')">立替なし（会社）</button>
-      <button class="btn" style="background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-bg);text-align:left" onclick="confirmDailyExp('関島')">関島立替</button>
-      <button class="btn" style="background:var(--sky-bg);color:var(--sky);border:1px solid var(--sky-bg);text-align:left" onclick="confirmDailyExp('船田')">船田立替</button>
-      <button class="btn" style="background:#dcfce7;color:var(--green);border:1px solid #dcfce7;text-align:left" onclick="confirmDailyExp('海誠')">海誠立替</button>
-      <button class="btn" style="background:var(--warn-bg);color:var(--warn);border:1px solid var(--warn-bg);text-align:left" onclick="confirmDailyExp('坂場')">坂場立替</button>
-      <button class="btn bo" onclick="closeDailyExpPopup()">経費登録しない</button>
-    </div>
-  </div>
-</div>
 <!-- 支払通知書モーダル -->
 <div id="sendingOverlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;flex-direction:column;align-items:center;justify-content:center;color:#fff;font-size:16px;font-weight:700;gap:16px">
   <div style="width:44px;height:44px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite"></div>
@@ -465,7 +449,7 @@ function calcMonth(m){
       var pts=+(entry.pts||0);
       var daily=getDailyTotal(entry);
       var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
-      tamt+=Math.round((pts-daily)*rate/100);
+      tamt+=Math.round(pts*rate/100)-daily;
     });
     talByT[t.id]=tamt;talTotal+=tamt;
   });
@@ -507,7 +491,7 @@ function calcMonth(m){
           var lpts=+(lentry.pts||0);
           var ldaily=getDailyTotal(lentry);
           var lrate=(lt.rates&&lt.rates[pid]!=null)?lt.rates[pid]:lp.rate;
-          talAmt+=Math.round((lpts-ldaily)*lrate/100);
+          talAmt+=Math.round(lpts*lrate/100)-ldaily;
         });
       });
       amt=Math.max(0,amt-talAmt);
@@ -582,7 +566,7 @@ function renderShuushi(){
       h+='<td class="tr">'+pLabel+'</td>';
       h+='<td class="tr fw" style="color:var(--blue)" id="inc-amt-'+p.id+'">'+yen(c.incByP[p.id]||0)+'</td></tr>';
     });
-    (c.noticeIncomeItems||[]).forEach(function(item){
+    (c.noticeIncomeItems||[]).filter(function(item){return item.itemName!=="寮費";}).forEach(function(item){
       h+='<tr><td class="fw" colspan="2">'+esc(item.talentName)+' '+esc(item.itemName)+'</td>'
         +'<td class="tr" style="color:var(--text2)">控除収入</td>'
         +'<td class="tr fw" style="color:var(--blue)">'+yen(item.amount)+'</td></tr>';
@@ -602,10 +586,19 @@ function renderShuushi(){
       talGross+=Math.round(+(entry.pts||0)*rate/100);
     });
   });
+  var dailyPayTotal=0;
+  var md2data=getMonth(currentMonth);
+  master.talents.forEach(function(t){
+    (t.platforms||[]).forEach(function(pid){
+      var entry=((md2data.talent||{})[t.id]||{})[pid]||{};
+      dailyPayTotal+=getDailyTotal(entry);
+    });
+  });
   // 支出内訳
   h+='<div class="card"><div class="ch">📉 支出内訳</div>';
   h+='<table class="t"><thead><tr><th>項目</th><th class="tr">金額</th></tr></thead><tbody>';
   h+='<tr><td>タレント報酬</td><td class="tr fw">'+yen(talGross)+'</td></tr>';
+  if(dailyPayTotal>0) h+='<tr><td style="padding-left:16px;color:var(--text3);font-size:12px">（日払い）</td><td class="tr" style="color:var(--text3);font-size:12px">（'+yen(dailyPayTotal)+'）</td></tr>';
   h+='<tr><td>スタッフ報酬</td><td class="tr fw">'+yen(c.stfTotal)+'</td></tr>';
   h+='<tr><td>外注報酬</td><td class="tr fw">'+yen(c.outTotal)+'</td></tr>';
   h+='<tr><td>経費合計</td><td class="tr fw">'+yen(expT)+'</td></tr>';
@@ -640,10 +633,10 @@ function renderTalent(){
     h='<div class="card"><div class="empty">⚙️ マスタでタレントを登録してください</div></div>';
     return h;
   }
-  var grandTotal=0,grandGross=0,grandDeduct=0;
+  var grandTotal=0,grandGross=0,grandDeduct=0,grandTotalForGrand=0;
   master.talents.filter(function(t){return !t.retiredFrom||currentMonth<t.retiredFrom;}).forEach(function(t){
     var tData=md.talent[t.id]||{};
-    var tTotal=0;
+    var tTotal=0,tTotalForGrand=0;
     var oName=t.outsourceId?(function(){var o=master.outsource.find(function(x){return x.id===t.outsourceId;});return o?o.name:"";})():"";
     h+='<div class="card">';
     h+='<div class="talent-name">'+(t.realName?esc(t.realName)+' <span style="font-size:13px;font-weight:400;color:var(--text2)">（'+esc(t.name)+'）</span>':esc(t.name))+'</div>';
@@ -658,10 +651,14 @@ function renderTalent(){
         var entry=(tData[pid])||{pts:""};
         var pts=+(entry.pts||0);
         var dailyTotal=getDailyTotal(entry);
+        var ryouhiTotal=getRyouhiTotal(entry);
         var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
-        var amt=Math.round((pts-dailyTotal)*rate/100);
+        var grossAmt=Math.round(pts*rate/100);
+        var amt=grossAmt-dailyTotal-ryouhiTotal;
         tTotal+=amt;
-        var dailyEntries=entry.dailyEntries||(entry.daily?[{date:"",pts:+(entry.daily||0)}]:[]);
+        tTotalForGrand+=(grossAmt-dailyTotal);
+        var dailyEntries=entry.dailyEntries||(entry.daily?[{date:"",amount:+(entry.daily||0)}]:[]);
+        var ryouhiEntries=entry.ryouhiEntries||[];
         h+='<div class="chat-grid">';
         h+='<span style="font-size:14px;font-weight:500">'+esc(p.name)+'</span>';
         h+='<input type="number" value="'+(entry.pts||"")+'" placeholder="0" style="padding:5px 8px;font-size:14px;text-align:right" onchange="setTalentPt(\''+t.id+'\',\''+pid+'\',this.value)">';
@@ -669,29 +666,42 @@ function renderTalent(){
         h+='<span class="chat-amt" id="ta-'+t.id+'-'+pid+'">'+yen(amt)+'</span>';
         h+='</div>';
         h+='<div class="daily-section">';
-        h+='<div style="font-size:12px;color:var(--text2);font-weight:600;margin-bottom:6px">日払い控除</div>';
+        h+='<div style="font-size:12px;color:var(--text2);font-weight:600;margin-bottom:6px">日払い合計</div>';
         h+='<div id="daily-rows-'+t.id+'-'+pid+'">';
         dailyEntries.forEach(function(de,idx){
           h+='<div class="daily-row">'
             +'<input type="date" value="'+(de.date||"")+'" onchange="setDailyDate(\''+t.id+'\',\''+pid+'\','+idx+',this.value)">'
-            +'<input type="number" value="'+(de.pts||"")+'" placeholder="0" onchange="setDailyPts(\''+t.id+'\',\''+pid+'\','+idx+',this.value)">pt'
+            +'¥<input type="number" value="'+(de.amount||de.pts||"")+'" placeholder="0" onchange="setDailyAmt(\''+t.id+'\',\''+pid+'\','+idx+',this.value)">'
             +'<button class="btn bs" style="padding:2px 6px;font-size:12px" onclick="removeDailyEntry(\''+t.id+'\',\''+pid+'\','+idx+')">✕</button>'
             +'</div>';
         });
         h+='</div>';
         h+='<button class="daily-add" onclick="addDailyEntry(\''+t.id+'\',\''+pid+'\')">＋ 日払いを追加</button>';
-        if(dailyTotal>0) h+='<div class="daily-total">控除合計 −'+yen(Math.round(dailyTotal*rate/100))+'（'+dailyTotal.toLocaleString()+'pt）</div>';
+        h+='<div style="margin-top:10px">';
+        h+='<div style="font-size:12px;color:var(--text2);font-weight:600;margin-bottom:6px">寮費</div>';
+        h+='<div id="ryouhi-rows-'+t.id+'-'+pid+'">';
+        ryouhiEntries.forEach(function(re,idx){
+          h+='<div class="daily-row">'
+            +'<input type="date" value="'+(re.date||"")+'" onchange="setRyouhiDate(\''+t.id+'\',\''+pid+'\','+idx+',this.value)">'
+            +'¥<input type="number" value="'+(re.amount||"")+'" placeholder="0" onchange="setRyouhiAmt(\''+t.id+'\',\''+pid+'\','+idx+',this.value)">'
+            +'<button class="btn bs" style="padding:2px 6px;font-size:12px" onclick="removeRyouhiEntry(\''+t.id+'\',\''+pid+'\','+idx+')">✕</button>'
+            +'</div>';
+        });
+        h+='</div>';
+        h+='<button class="daily-add" onclick="addRyouhiEntry(\''+t.id+'\',\''+pid+'\')">＋ 寮費を追加</button>';
+        h+='</div>';
         h+='</div>';
       });
     }
-    var grossTotal=0,dailyDeductTotal=0;
+    var grossTotal=0,dailyDeductTotal=0,ryouhiDeductTotal=0;
     (t.platforms||[]).forEach(function(pid2){
       var p2=master.platforms.find(function(x){return x.id===pid2;});if(!p2)return;
       var e2=(tData[pid2])||{pts:0};
-      var pts2=+(e2.pts||0),daily2=getDailyTotal(e2);
+      var pts2=+(e2.pts||0),daily2=getDailyTotal(e2),ryouhi2=getRyouhiTotal(e2);
       var rate2=(t.rates&&t.rates[pid2]!=null)?t.rates[pid2]:p2.rate;
       grossTotal+=Math.round(pts2*rate2/100);
-      dailyDeductTotal+=Math.round(daily2*rate2/100);
+      dailyDeductTotal+=daily2;
+      ryouhiDeductTotal+=ryouhi2;
     });
     h+='<div class="talent-total"><span>報酬合計</span>'
       +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">'
@@ -700,17 +710,20 @@ function renderTalent(){
       +'<button class="btn be" onclick="openTalentNotice(\''+t.id+'\')" title="支払通知書" style="background:#6c757d;color:#fff">PDF</button>'
       +'<button class="btn be" onclick="sendLineNotice(\''+t.id+'\')" title="LINE送信" style="background:#06c755;color:#fff">LINE</button>'
       +'</div>'
-      +(dailyDeductTotal>0?'<div style="font-size:12px;color:var(--text3)">日払い控除 −'+yen(dailyDeductTotal)+' 控除後 '+yen(grossTotal-dailyDeductTotal)+'</div>':'')
+      +(dailyDeductTotal>0||ryouhiDeductTotal>0?'<div style="font-size:12px;color:var(--text3);margin-top:2px">'
+        +(dailyDeductTotal>0?'日払い合計 '+yen(dailyDeductTotal)+'　':'')
+        +(ryouhiDeductTotal>0?'寮費合計 '+yen(ryouhiDeductTotal):'')
+        +'</div>':'')
       +'</div></div>';
     h+='</div>';
-    grandTotal+=tTotal;
+    grandTotal+=tTotalForGrand;
     grandGross+=grossTotal;
     grandDeduct+=dailyDeductTotal;
   });
   h+='<div class="pbar"><div>'
     +'<div style="font-size:15px;font-weight:700">タレント報酬合計</div>'
-    +(grandDeduct>0?'<div style="font-size:12px;color:var(--text3);margin-top:2px">日払い控除 −'+yen(grandDeduct)+' 控除後 '+yen(grandTotal)+'</div>':'')
-    +'</div><span style="font-size:22px;font-weight:800;color:var(--red)">'+yen(grandDeduct>0?grandGross:grandTotal)+'</span></div>';
+    +(grandDeduct>0?'<div style="font-size:12px;color:var(--text3);margin-top:2px">日払い合計 −'+yen(grandDeduct)+'</div>':'')
+    +'</div><span style="font-size:22px;font-weight:800;color:var(--red)">'+yen(grandDeduct>0?grandGross-grandDeduct:grandTotal)+'</span></div>';
   if(lk) return '<div style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:var(--r);padding:8px 14px;margin-bottom:12px;font-size:13px;text-align:center">🔒 ロック中 — 編集するには解除してください</div><div inert style="opacity:0.65">'+h+'</div>';
   return h;
 }
@@ -730,7 +743,7 @@ function addDailyEntry(tid,pid){
   if(!md.talent[tid])md.talent[tid]={};
   if(!md.talent[tid][pid])md.talent[tid][pid]={pts:0};
   if(!md.talent[tid][pid].dailyEntries)md.talent[tid][pid].dailyEntries=[];
-  md.talent[tid][pid].dailyEntries=md.talent[tid][pid].dailyEntries.concat([{date:"",pts:0}]);
+  md.talent[tid][pid].dailyEntries=md.talent[tid][pid].dailyEntries.concat([{date:"",amount:0}]);
   setMonth(currentMonth,md);renderTalent2();
 }
 function removeDailyEntry(tid,pid,idx){
@@ -738,46 +751,47 @@ function removeDailyEntry(tid,pid,idx){
   md.talent[tid][pid].dailyEntries=md.talent[tid][pid].dailyEntries.filter(function(_,i){return i!==idx;});
   setMonth(currentMonth,md);renderTalent2();
 }
+function setDailyAmt(tid,pid,idx,val){
+  var md=getMonth(currentMonth);
+  if(!md.talent||!md.talent[tid]||!md.talent[tid][pid])return;
+  if(!md.talent[tid][pid].dailyEntries)return;
+  md.talent[tid][pid].dailyEntries[idx].amount=parseFloat(val)||0;
+  setMonth(currentMonth,md);
+  updateTalentAmt(tid,pid,md);
+}
+function addRyouhiEntry(tid,pid){
+  var md=getMonth(currentMonth);
+  if(!md.talent)md.talent={};
+  if(!md.talent[tid])md.talent[tid]={};
+  if(!md.talent[tid][pid])md.talent[tid][pid]={pts:0};
+  if(!md.talent[tid][pid].ryouhiEntries)md.talent[tid][pid].ryouhiEntries=[];
+  md.talent[tid][pid].ryouhiEntries=md.talent[tid][pid].ryouhiEntries.concat([{date:"",amount:0}]);
+  setMonth(currentMonth,md);renderTalent2();
+}
+function removeRyouhiEntry(tid,pid,idx){
+  var md=getMonth(currentMonth);
+  md.talent[tid][pid].ryouhiEntries=md.talent[tid][pid].ryouhiEntries.filter(function(_,i){return i!==idx;});
+  setMonth(currentMonth,md);renderTalent2();
+}
+function setRyouhiDate(tid,pid,idx,val){
+  var md=getMonth(currentMonth);
+  if(!md.talent[tid][pid].ryouhiEntries)return;
+  md.talent[tid][pid].ryouhiEntries[idx].date=val;
+  setMonth(currentMonth,md);
+}
+function setRyouhiAmt(tid,pid,idx,val){
+  var md=getMonth(currentMonth);
+  if(!md.talent||!md.talent[tid]||!md.talent[tid][pid])return;
+  if(!md.talent[tid][pid].ryouhiEntries)return;
+  md.talent[tid][pid].ryouhiEntries[idx].amount=parseFloat(val)||0;
+  setMonth(currentMonth,md);
+  updateTalentAmt(tid,pid,md);
+}
 function setDailyDate(tid,pid,idx,val){
   var md=getMonth(currentMonth);
   if(!md.talent[tid][pid].dailyEntries)return;
   md.talent[tid][pid].dailyEntries[idx].date=val;
   setMonth(currentMonth,md);
-}
-var _dailyExpPending=null;
-function setDailyPts(tid,pid,idx,val){
-  var md=getMonth(currentMonth);
-  if(!md.talent[tid][pid].dailyEntries)return;
-  var pts=parseFloat(val)||0;
-  md.talent[tid][pid].dailyEntries[idx].pts=pts;
-  setMonth(currentMonth,md);
-  updateTalentAmt(tid,pid,md);
-  if(pts>0){
-    var entry=md.talent[tid][pid];
-    var de=entry.dailyEntries[idx];
-    var t=master.talents.find(function(x){return x.id===tid;});
-    var p=master.platforms.find(function(x){return x.id===pid;});
-    var rate=(t&&t.rates&&t.rates[pid]!=null)?t.rates[pid]:(p?p.rate:0);
-    var amt=Math.round(pts*rate/100);
-    var date=de.date||"";
-    _dailyExpPending={tid:tid,pid:pid,idx:idx,date:date,amt:amt,talentName:(t?(t.realName||t.name):"")};
-    var info=document.getElementById("dailyExpInfo");
-    if(info) info.textContent=(date||"日付未設定")+" / "+(t?(t.realName||t.name):"")+" / ¥"+amt.toLocaleString()+" (給料)";
-    document.getElementById("dailyExpOverlay").classList.add("show");
-  }
-}
-function closeDailyExpPopup(){
-  _dailyExpPending=null;
-  document.getElementById("dailyExpOverlay").classList.remove("show");
-}
-function confirmDailyExp(tatekae){
-  if(!_dailyExpPending){closeDailyExpPopup();return;}
-  var p=_dailyExpPending;
-  var md=getMonth(currentMonth);
-  var exp={id:uid(),date:p.date,kubun:"会社",kamoku:"給料",detail:p.talentName,amount:p.amt,receiptUrl:"",tatekae:tatekae};
-  md.expenses=(md.expenses||[]).concat([exp]);
-  setMonth(currentMonth,md);
-  closeDailyExpPopup();
 }
 function updateTalentAmt(tid,pid,md){
   var t=master.talents.find(function(x){return x.id===tid;});
@@ -786,14 +800,14 @@ function updateTalentAmt(tid,pid,md){
   var entry=md.talent[tid][pid]||{pts:0};
   var pts=+(entry.pts||0),dailyTotal=getDailyTotal(entry);
   var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
-  var amt=Math.round((pts-dailyTotal)*rate/100);
+  var amt=Math.round(pts*rate/100)-dailyTotal-getRyouhiTotal(entry);
   var el=document.getElementById("ta-"+tid+"-"+pid);if(el)el.textContent=yen(amt);
   var tTotal=0;
   (t.platforms||[]).forEach(function(p2id){
     var pp=master.platforms.find(function(x){return x.id===p2id;});if(!pp)return;
     var e2=(md.talent[tid]&&md.talent[tid][p2id])||{pts:0};
     var r2=(t.rates&&t.rates[p2id]!=null)?t.rates[p2id]:pp.rate;
-    tTotal+=Math.round((+(e2.pts||0)-getDailyTotal(e2))*r2/100);
+    var e2g=getDailyTotal(e2),e2r=getRyouhiTotal(e2);tTotal+=Math.round(+(e2.pts||0)*r2/100)-e2g-e2r;
   });
   var el3=document.getElementById("tt-"+tid);if(el3)el3.textContent=yen(tTotal);
 }
@@ -943,7 +957,7 @@ function renderGaichuu(){
               var lpts=+(lentry.pts||0);
               var ldaily=getDailyTotal(lentry);
               var lrate=(lt.rates&&lt.rates[pid]!=null)?lt.rates[pid]:lp.rate;
-              talAmt2+=Math.round((lpts-ldaily)*lrate/100);
+              talAmt2+=Math.round(lpts*lrate/100)-ldaily;
             });
           });
           dispAmt=Math.max(0,amt-talAmt2);
@@ -1868,9 +1882,9 @@ function openTalentNotice(tid){
   (t.platforms||[]).forEach(function(pid){
     var pl=master.platforms.find(function(x){return x.id===pid;});if(!pl)return;
     var entry=((md.talent||{})[t.id]||{})[pid]||{pts:0};
-    var pts=+(entry.pts||0)-getDailyTotal(entry);
+    var pts=+(entry.pts||0);
     var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:pl.rate;
-    var amt=Math.round(pts*rate/100);
+    var amt=Math.round(pts*rate/100)-getDailyTotal(entry)-getRyouhiTotal(entry);
     grandTotal+=amt;
     rows.push({name:esc(pl.name)+' '+m+'月分',pts:+(entry.pts||0),rate:rate,amt:amt});
   });
@@ -1996,8 +2010,12 @@ function updateOutModal(){
   }
 }
 function getDailyTotal(entry){
-  if(entry.dailyEntries&&entry.dailyEntries.length) return entry.dailyEntries.reduce(function(s,e){return s+(+(e.pts||0));},0);
+  if(entry.dailyEntries&&entry.dailyEntries.length) return entry.dailyEntries.reduce(function(s,e){return s+(+(e.amount||e.pts||0));},0);
   return +(entry.daily||0); // 旧データ互換
+}
+function getRyouhiTotal(entry){
+  if(!entry.ryouhiEntries||!entry.ryouhiEntries.length)return 0;
+  return entry.ryouhiEntries.reduce(function(s,e){return s+(+(e.amount||0));},0);
 }
 function calcOutAmt(o,pts){
   if(o.formula==="fixed") return o.fixedAmount||0;
