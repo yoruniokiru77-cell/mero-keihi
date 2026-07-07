@@ -1111,6 +1111,28 @@ function renderGaichuu(){
     h+='<tr class="trow"><td colspan="3">外注報酬合計</td><td class="tr">'+yen(total)+'</td></tr>';
     h+='</tbody></table>';
   }
+  var agenciesWithRate=(master.agencies||[]).filter(function(ag){return ag.rate!=null&&ag.rate>0;});
+  if(agenciesWithRate.length>0){
+    h+='<table class="t" style="margin-top:8px"><thead><tr><th>代理店</th><th class="tr" style="width:110px">pt</th><th class="tr" style="width:60px">報酬率</th><th class="tr" style="width:100px">金額</th><th style="width:36px"></th></tr></thead><tbody>';
+    agenciesWithRate.forEach(function(ag){
+      var agTalents=master.talents.filter(function(t){return t.agencyId===ag.id&&(!t.retiredFrom||currentMonth<t.retiredFrom);});
+      var agPts=0;
+      agTalents.forEach(function(t){
+        (t.platforms||[]).forEach(function(pid){
+          var entry=((md.talent||{})[t.id]||{})[pid]||{pts:0};
+          agPts+=+(entry.pts||0);
+        });
+      });
+      var combinedRate=(ag.rate||0)+30;
+      var agAmt=Math.round(agPts*combinedRate/100);
+      h+='<tr><td>'+esc(ag.name)+'</td>'
+        +'<td class="tr">'+agPts.toLocaleString()+'</td>'
+        +'<td class="tr">'+combinedRate+'%</td>'
+        +'<td class="tr fw">'+yen(agAmt)+'</td>'
+        +'<td><button onclick="openAgencyPaymentNotice(\''+ag.id+'\')">🖨️</button></td></tr>';
+    });
+    h+='</tbody></table>';
+  }
   h+='</div>';
   if(lk) return '<div style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:var(--r);padding:8px 14px;margin-bottom:12px;font-size:13px;text-align:center">🔒 ロック中 — 編集するには解除してください</div><div inert style="opacity:0.65">'+h+'</div>';
   return h;
@@ -1777,7 +1799,8 @@ function openMasterModal(type,id){
       +'<button type="button" onclick="addOutRow()" style="margin-top:8px;padding:6px 14px;border:1px dashed var(--blue);border-radius:var(--r);background:var(--bg);color:var(--blue);cursor:pointer;font-size:13px;font-family:inherit">＋ 項目を追加</button>';
   }else if(type==="agency"){
     var a=id?(master.agencies||[]).find(function(x){return x.id===id;}):{};
-    body='<div class="mrow"><label>代理店名</label><input type="text" id="mm-name" value="'+(a&&a.name?esc(a.name):"")+'" placeholder="例: ○○プロ"></div>';
+    body='<div class="mrow"><label>代理店名</label><input type="text" id="mm-name" value="'+(a&&a.name?esc(a.name):"")+'" placeholder="例: ○○プロ"></div>'
+      +'<div class="mrow"><label>外注料率 (%)</label><input type="number" id="mm-agency-rate" value="'+(a&&a.rate!=null?a.rate:"")+'" placeholder="例: 20" style="width:80px"><span style="font-size:12px;color:var(--text3);margin-left:8px">+ タレント30% = 合算でPDF表示</span></div>';
   }
   document.getElementById("masterModalBody").innerHTML=body;
   document.getElementById("masterOverlay").classList.add("show");
@@ -2165,6 +2188,46 @@ function openPaymentNotice(oid){
   showNotice(esc(o.name),pts);
 }
 function closePaymentNotice(){document.getElementById("noticeOverlay").classList.remove("show");}
+function openAgencyPaymentNotice(agId){
+  var ag=(master.agencies||[]).find(function(x){return x.id===agId;});
+  if(!ag)return;
+  var md=getMonth(currentMonth);
+  var agTalents=master.talents.filter(function(t){return t.agencyId===agId&&(!t.retiredFrom||currentMonth<t.retiredFrom);});
+  var pts=0;
+  agTalents.forEach(function(t){
+    (t.platforms||[]).forEach(function(pid){
+      var entry=((md.talent||{})[t.id]||{})[pid]||{pts:0};
+      pts+=+(entry.pts||0);
+    });
+  });
+  var combinedRate=(ag.rate||0)+30;
+  var total=Math.round(pts*combinedRate/100);
+  var today=new Date();
+  var dateStr=today.getFullYear()+'年'+(today.getMonth()+1)+'月'+today.getDate()+'日';
+  var p2=currentMonth.split('-');var y=p2[0],m=+p2[1];
+  var periodStr=y+'年'+m+'月後半分';
+  var payDate=y+'年'+(m+1>12?1:m+1)+'月20日';
+  var h=buildNoticeHeader(dateStr,esc(ag.name),'支払通知書',true);
+  h+='<div style="border:2px solid #000;padding:12px 20px;margin-bottom:20px;text-align:center">'
+    +'<div style="font-size:13px;margin-bottom:4px">お支払金額</div>'
+    +'<div style="font-size:28px;font-weight:800">¥'+total.toLocaleString()+'</div>'
+    +'</div>';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px">'
+    +'<thead><tr style="background:#f5f5f4">'
+    +'<th style="padding:6px 8px;border:1px solid #ccc;text-align:left">明細</th>'
+    +'<th style="padding:6px 8px;border:1px solid #ccc;text-align:right">ポイント</th>'
+    +'<th style="padding:6px 8px;border:1px solid #ccc;text-align:right">料率</th>'
+    +'<th style="padding:6px 8px;border:1px solid #ccc;text-align:right">金額</th>'
+    +'</tr></thead><tbody>';
+  h+='<tr><td style="padding:6px 8px;border:1px solid #ccc">'+periodStr+' 外注報酬合計</td>'
+    +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right">'+pts.toLocaleString()+'pt</td>'
+    +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right">'+combinedRate+'%</td>'
+    +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right">¥'+total.toLocaleString()+'</td></tr>';
+  h+='</tbody></table>';
+  h+='<div style="font-size:12px;color:#555">支払予定日：'+payDate+'<br>※土日祝の場合、翌銀行営業日になります。</div></div>';
+  document.getElementById('noticeBody').innerHTML=h;
+  document.getElementById('noticeOverlay').classList.add('show');
+}
 function printNotice(){
   var content=document.getElementById("noticeBody").innerHTML;
   var w=window.open("","_blank","width=700,height=900");
@@ -2344,10 +2407,11 @@ function saveMasterModal(){
   }else if(type==="agency"){
     if(!name.trim()){alert("代理店名を入力してください");return;}
     if(!master.agencies)master.agencies=[];
+    var aRate=parseFloat((document.getElementById('mm-agency-rate')||{}).value)||null;
     if(id){
-      master.agencies=master.agencies.map(function(a){return a.id===id?Object.assign({},a,{name:name}):a;});
+      master.agencies=master.agencies.map(function(a){return a.id===id?Object.assign({},a,{name:name,rate:aRate}):a;});
     }else{
-      master.agencies=master.agencies.concat([{id:uid(),name:name}]);
+      master.agencies=master.agencies.concat([{id:uid(),name:name,rate:aRate}]);
     }
   }
 
