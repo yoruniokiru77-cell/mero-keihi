@@ -983,7 +983,8 @@ function renderGaichuu(){
   var lk=isLocked();
   var md=getMonth(currentMonth);
   var h="<div class=\"card\"><div class=\"ch\">🔗 外注報酬</div>";
-  if(master.outsource.length===0){
+  var agenciesWithRate=(master.agencies||[]).filter(function(ag){return ag.rate!=null&&ag.rate>0;});
+  if(master.outsource.length===0&&agenciesWithRate.length===0){
     h+='<div class="empty">⚙️ マスタで外注を登録してください</div>';
   }else{
     h+='<table class="t"><thead><tr><th>外注先</th><th class="tr" style="width:110px">pt</th><th class="tr" style="width:60px">報酬率</th><th class="tr" style="width:100px">金額</th><th style="width:36px"></th></tr></thead><tbody>';
@@ -1108,12 +1109,6 @@ function renderGaichuu(){
         }
       }
     });
-    h+='<tr class="trow"><td colspan="3">外注報酬合計</td><td class="tr">'+yen(total)+'</td></tr>';
-    h+='</tbody></table>';
-  }
-  var agenciesWithRate=(master.agencies||[]).filter(function(ag){return ag.rate!=null&&ag.rate>0;});
-  if(agenciesWithRate.length>0){
-    h+='<table class="t" style="margin-top:8px"><thead><tr><th>代理店</th><th class="tr" style="width:110px">pt</th><th class="tr" style="width:60px">報酬率</th><th class="tr" style="width:100px">金額</th><th style="width:36px"></th></tr></thead><tbody>';
     agenciesWithRate.forEach(function(ag){
       var agTalents=master.talents.filter(function(t){return t.agencyId===ag.id&&(!t.retiredFrom||currentMonth<t.retiredFrom);});
       var agPts=0;
@@ -1131,6 +1126,7 @@ function renderGaichuu(){
         +'<td class="tr fw">'+yen(agAmt)+'</td>'
         +'<td><button onclick="openAgencyPaymentNotice(\''+ag.id+'\')">🖨️</button></td></tr>';
     });
+    h+='<tr class="trow"><td colspan="3">外注報酬合計</td><td class="tr">'+yen(total)+'</td></tr>';
     h+='</tbody></table>';
   }
   h+='</div>';
