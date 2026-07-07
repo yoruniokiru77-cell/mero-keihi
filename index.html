@@ -1744,7 +1744,7 @@ function getBmCode(){
 /* マスタモーダル */
 function openMasterModal(type,id){
   mModalType=type;mModalId=id;
-  var titles={platform:"チャット媒体",talent:"タレント",staff:"スタッフ",outsource:"外注"};
+  var titles={platform:"チャット媒体",talent:"タレント",staff:"スタッフ",outsource:"外注",agency:"代理店",recurring:"定期経費"};
   document.getElementById("masterModalTitle").textContent=(id?"編集 — ":"追加 — ")+titles[type];
   var body="";
   if(type==="platform"){
@@ -2391,7 +2391,7 @@ function closeMasterModal(){document.getElementById("masterOverlay").classList.r
 function saveMasterModal(){
   var type=mModalType,id=mModalId;
   var name=(document.getElementById("mm-name")||{}).value||"";
-  if(type!=="outsource"&&!name.trim()){alert("名前を入力してください");return;}
+  if(type!=="outsource"&&type!=="recurring"&&!name.trim()){alert("名前を入力してください");return;}
 
   if(type==="platform"){
     var rate=parseFloat((document.getElementById("mm-rate")||{}).value)||0;
