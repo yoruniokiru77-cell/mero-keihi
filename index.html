@@ -324,7 +324,7 @@ var TABS=["収支","タレント","スタッフ","外注","経費","マスタ"];
 var TAB_ICONS={"収支":"📊","タレント":"🎤","スタッフ":"👥","外注":"🔗","経費":"🧾","マスタ":"⚙️"};
 
 /* ===== 状態 ===== */
-var master={platforms:[],talents:[],staff:[
+var master={platforms:[],talents:[],agencies:[],staff:[
   {id:"s1",name:"関島 悠太",type:"fixed",amount:400000},
   {id:"s2",name:"船田 真史",type:"fixed",amount:400000},
   {id:"s3",name:"小澤 海誠",type:"fixed",amount:550000},
@@ -333,6 +333,7 @@ var master={platforms:[],talents:[],staff:[
 var monthly={};
 var currentMonth=(function(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");})();
 var currentTab="収支";
+var talentAgencyTab="全体";
 var expFilter="all",expSort="asc",expSubTab="入力";
 var expF={date:"",kubun:"会社",kamoku:"消耗品費",detail:"",amount:"",receiptUrl:"",receiptUploading:false,tatekae:""};
 var editId="",editRecUrl="",editTatekae="";
@@ -625,6 +626,7 @@ function setIncomePt(pid,val){
 }
 
 /* ===== タレントタブ ===== */
+function setTalentAgencyTab(tab){talentAgencyTab=tab;renderTalent2();}
 function renderTalent(){
   var lk=isLocked();
   autoCarryForward();
@@ -634,8 +636,26 @@ function renderTalent(){
     h='<div class="card"><div class="empty">⚙️ マスタでタレントを登録してください</div></div>';
     return h;
   }
+  // 代理店タブバー
+  var agencies=master.agencies||[];
+  var tabs=['全体','本部'].concat(agencies.map(function(a){return a.name;}));
+  if(!tabs.includes(talentAgencyTab))talentAgencyTab='全体';
+  h+='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">';
+  tabs.forEach(function(tab){
+    var active=talentAgencyTab===tab;
+    h+='<button onclick="setTalentAgencyTab(\''+esc(tab)+'\')" style="padding:6px 14px;border-radius:20px;border:2px solid var(--blue);background:'+(active?'var(--blue)':'var(--bg)')+';color:'+(active?'#fff':'var(--blue)')+';font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">'+esc(tab)+'</button>';
+  });
+  h+='</div>';
+  // タレント絞り込み
+  var activeTalents=master.talents.filter(function(t){return !t.retiredFrom||currentMonth<t.retiredFrom;});
+  if(talentAgencyTab==='本部'){
+    activeTalents=activeTalents.filter(function(t){return !t.agencyId;});
+  }else if(talentAgencyTab!=='全体'){
+    var selAgency=agencies.find(function(a){return a.name===talentAgencyTab;});
+    activeTalents=activeTalents.filter(function(t){return selAgency&&t.agencyId===selAgency.id;});
+  }
   var grandTotal=0,grandGross=0,grandDeduct=0,grandRyouhi=0,grandTotalForGrand=0,grandPts=0;
-  master.talents.filter(function(t){return !t.retiredFrom||currentMonth<t.retiredFrom;}).forEach(function(t){
+  activeTalents.forEach(function(t){
     var tData=md.talent[t.id]||{};
     var tTotal=0,tTotalForGrand=0,tGross=0,tDailyDeduct=0,tRyouhiDeduct=0,tHosho=0;
     var oName=t.outsourceId?(function(){var o=master.outsource.find(function(x){return x.id===t.outsourceId;});return o?o.name:"";})():"";
@@ -1488,6 +1508,22 @@ function renderMasterTab(){
   }
   h+='<button class="btn-plus" onclick="openMasterModal(\'outsource\',\'\')">＋ 外注を追加</button></div>';
 
+  // 代理店
+  h+='<div class="card"><div class="ch">🏢 代理店マスタ</div>';
+  if(!master.agencies||master.agencies.length===0){h+='<div class="empty">まだ登録されていません</div>';}
+  else{
+    master.agencies.forEach(function(a){
+      var tCount=master.talents.filter(function(t){return t.agencyId===a.id;}).length;
+      h+='<div class="master-item">'
+        +'<div class="master-info"><div class="master-name">'+esc(a.name)+'</div><div class="master-sub">タレント '+tCount+'名</div></div>'
+        +'<div class="master-actions">'
+        +'<button class="btn bd" onclick="openMasterModal(\'agency\',\''+a.id+'\')">編集</button>'
+        +'<button class="btn bs" onclick="deleteMaster(\'agency\',\''+a.id+'\')">削除</button>'
+        +'</div></div>';
+    });
+  }
+  h+='<button class="btn-plus" onclick="openMasterModal(\'agency\',\'\')">＋ 代理店を追加</button></div>';
+
   // ブックマークレット
   h+='<div class="card"><div class="ch">🔖 FANZAブックマークレット</div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:10px">FANZA管理画面の精算ページで実行すると、全タレントのポイントを一括取込できます。</div>'
@@ -1671,6 +1707,10 @@ function openMasterModal(type,id){
     body='<div class="mrow"><label>本名</label><input type="text" id="mm-realname" value="'+(t&&t.realName?esc(t.realName):"")+'" placeholder="例: 山田 花子"></div>'
       +'<div class="mrow"><label>源氏名</label><input type="text" id="mm-name" value="'+(t&&t.name?esc(t.name):"")+'" placeholder="例: さくら"></div>'
       +'<div class="mrow"><label>FANZAキャラクターID<span style="font-size:11px;color:var(--text3);margin-left:6px">例: 1075132</span></label><input type="number" id="mm-fanzaid" value="'+(t&&t.fanzaCharId?t.fanzaCharId:"")+'" placeholder="FANZAの管理画面のID"></div>'
+      +'<div class="mrow"><label>所属代理店<span style="font-size:11px;color:var(--text3);margin-left:6px">未選択=本部</span></label>'
+      +'<select id="mm-agency"><option value="">本部</option>'
+      +(master.agencies||[]).map(function(a){return'<option value="'+a.id+'"'+(t&&t.agencyId===a.id?' selected':'')+'>'+esc(a.name)+'</option>';}).join("")
+      +'</select></div>'
       +'<div class="mrow"><label>業務委託先<span style="font-size:11px;color:var(--text3);margin-left:6px">任意</span></label>'
       +'<select id="mm-outsource"><option value="">なし</option>'
       +master.outsource.map(function(o){return'<option value="'+o.id+'"'+(t&&t.outsourceId===o.id?' selected':'')+'>'+esc(o.name)+'</option>';}).join("")
@@ -1734,6 +1774,9 @@ function openMasterModal(type,id){
       +'<div style="font-size:12px;color:var(--text3);margin:6px 0 4px">項目</div>'
       +'<div id="mm-out-rows" style="display:flex;flex-direction:column;gap:6px"></div>'
       +'<button type="button" onclick="addOutRow()" style="margin-top:8px;padding:6px 14px;border:1px dashed var(--blue);border-radius:var(--r);background:var(--bg);color:var(--blue);cursor:pointer;font-size:13px;font-family:inherit">＋ 項目を追加</button>';
+  }else if(type==="agency"){
+    var a=id?(master.agencies||[]).find(function(x){return x.id===id;}):{};
+    body='<div class="mrow"><label>代理店名</label><input type="text" id="mm-name" value="'+(a&&a.name?esc(a.name):"")+'" placeholder="例: ○○プロ"></div>';
   }
   document.getElementById("masterModalBody").innerHTML=body;
   document.getElementById("masterOverlay").classList.add("show");
@@ -2203,6 +2246,7 @@ function saveMasterModal(){
     var platforms=Array.from(document.querySelectorAll("#mm-platforms button")).filter(function(b){return b.style.background==='var(--blue)';}).map(function(b){return b.dataset.pid;});
     var realName=(document.getElementById("mm-realname")||{}).value||"";
     var fanzaCharId=(document.getElementById("mm-fanzaid")||{}).value||"";
+    var agencyId=(document.getElementById("mm-agency")||{}).value||"";
     var outsourceId=(document.getElementById("mm-outsource")||{}).value||"";
     var rates={};
     document.querySelectorAll("#mm-platforms input[data-rate-pid]").forEach(function(el){
@@ -2223,9 +2267,9 @@ function saveMasterModal(){
     var colaboP2=(document.getElementById("mm-colabo-p2")||{}).value||"";
     var colaboPartners=colabo?[colaboP1,colaboP2].filter(Boolean):[];
     if(id){
-      master.talents=master.talents.map(function(t){return t.id===id?Object.assign({},t,{name:name,realName:realName,fanzaCharId:fanzaCharId,outsourceId:outsourceId,platforms:platforms,rates:rates,noticeItems:noticeItems,retiredFrom:retiredFrom,colabo:colabo,colaboPartners:colaboPartners}):t;});
+      master.talents=master.talents.map(function(t){return t.id===id?Object.assign({},t,{name:name,realName:realName,fanzaCharId:fanzaCharId,outsourceId:outsourceId,platforms:platforms,rates:rates,noticeItems:noticeItems,retiredFrom:retiredFrom,agencyId:agencyId,colabo:colabo,colaboPartners:colaboPartners}):t;});
     }else{
-      master.talents=master.talents.concat([{id:uid(),name:name,realName:realName,fanzaCharId:fanzaCharId,outsourceId:outsourceId,platforms:platforms,rates:rates,noticeItems:noticeItems,retiredFrom:retiredFrom,colabo:colabo,colaboPartners:colaboPartners}]);
+      master.talents=master.talents.concat([{id:uid(),name:name,realName:realName,fanzaCharId:fanzaCharId,agencyId:agencyId,outsourceId:outsourceId,platforms:platforms,rates:rates,noticeItems:noticeItems,retiredFrom:retiredFrom,colabo:colabo,colaboPartners:colaboPartners}]);
     }
   }else if(type==="staff"){
     var stype=(document.getElementById("mm-type")||{}).value||"fixed";
@@ -2265,6 +2309,14 @@ function saveMasterModal(){
       var existId=(oid&&oldMap[oid])?oid:uid();
       master.outsource=master.outsource.concat([Object.assign({id:existId},entry)]);
     });
+  }else if(type==="agency"){
+    if(!name.trim()){alert("代理店名を入力してください");return;}
+    if(!master.agencies)master.agencies=[];
+    if(id){
+      master.agencies=master.agencies.map(function(a){return a.id===id?Object.assign({},a,{name:name}):a;});
+    }else{
+      master.agencies=master.agencies.concat([{id:uid(),name:name}]);
+    }
   }
 
   scheduleSaveMaster();
@@ -2282,6 +2334,7 @@ function deleteMaster(type,id){
   else if(type==="talent") master.talents=master.talents.filter(function(x){return x.id!==id;});
   else if(type==="staff") master.staff=master.staff.filter(function(x){return x.id!==id;});
   else if(type==="outsource") master.outsource=master.outsource.filter(function(x){return x.id!==id;});
+  else if(type==="agency"){master.agencies=(master.agencies||[]).filter(function(x){return x.id!==id;});master.talents=master.talents.map(function(t){return t.agencyId===id?Object.assign({},t,{agencyId:""}):t;});}
   scheduleSaveMaster();render();
 }
 
