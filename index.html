@@ -1120,11 +1120,33 @@ function renderGaichuu(){
       });
       var combinedRate=(ag.rate||0)+30;
       var agAmt=Math.round(agPts*combinedRate/100);
-      h+='<tr><td>'+esc(ag.name)+'</td>'
-        +'<td class="tr">'+agPts.toLocaleString()+'</td>'
+      h+='<tr><td class="fw">'+esc(ag.name)+'</td>'
+        +'<td class="tr" style="color:var(--text2)">'+agPts.toLocaleString()+' </td>'
         +'<td class="tr">'+combinedRate+'%</td>'
         +'<td class="tr fw">'+yen(agAmt)+'</td>'
-        +'<td><button onclick="openAgencyPaymentNotice(\''+ag.id+'\')">🖨️</button></td></tr>';
+        +'<td style="white-space:nowrap;padding:4px 6px"><button class="btn be" onclick="openAgencyPaymentNotice(\''+ag.id+'\')" title="支払通知書">🖨️</button></td></tr>';
+      if(agTalents.length>0){
+        var agOdId='od-ag-'+ag.id;
+        h+='<tr><td colspan="5" style="padding:0"><div style="padding:4px 10px;background:var(--bg2);border-bottom:1px solid var(--border)">'
+          +'<button onclick="toggleOutDetail(\''+agOdId+'\')" data-orig-text="▶ 明細を表示（'+agTalents.length+'件）" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text2);font-family:inherit">▶ 明細を表示（'+agTalents.length+'件）</button>'
+          +'</div></td></tr>';
+        h+='<tr id="'+agOdId+'" style="display:none"><td colspan="5" style="padding:0"><table class="t" style="margin:0">';
+        agTalents.forEach(function(t){
+          var tpts=0,tamt=0;
+          (t.platforms||[]).forEach(function(pid){
+            var p=master.platforms.find(function(x){return x.id===pid;});if(!p)return;
+            var entry=((md.talent||{})[t.id]||{})[pid]||{pts:0};
+            var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;
+            tpts+=+(entry.pts||0);
+            tamt+=Math.round(+(entry.pts||0)*rate/100)-getDailyTotal(entry);
+          });
+          h+='<tr style="background:var(--bg2)"><td style="padding-left:24px;font-size:13px">└ '+(t.realName?esc(t.realName)+' ('+esc(t.name)+')':esc(t.name))+'</td>'
+            +'<td class="tr" style="font-size:13px;color:var(--text2)">'+tpts.toLocaleString()+'pt</td>'
+            +'<td class="tr" style="font-size:12px;color:var(--text2)">報酬</td>'
+            +'<td class="tr fw" style="color:var(--text2)">'+yen(tamt)+'</td><td></td></tr>';
+        });
+        h+='</table></td></tr>';
+      }
     });
     h+='<tr class="trow"><td colspan="3">外注報酬合計</td><td class="tr">'+yen(total)+'</td></tr>';
     h+='</tbody></table>';
