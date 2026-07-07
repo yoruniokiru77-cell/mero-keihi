@@ -329,7 +329,7 @@ var master={platforms:[],talents:[],agencies:[],staff:[
   {id:"s2",name:"船田 真史",type:"fixed",amount:400000},
   {id:"s3",name:"小澤 海誠",type:"fixed",amount:550000},
   {id:"s4",name:"坂場 健",type:"fixed",amount:300000}
-],outsource:[]};
+],outsource:[],recurringExpenses:[]};
 var monthly={};
 var currentMonth=(function(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");})();
 var currentTab="収支";
@@ -1169,6 +1169,7 @@ function setOutPt(oid,val){
 
 /* ===== 経費タブ ===== */
 function renderKeihi(){
+  autoInsertRecurring();
   var lk=isLocked();
   var md=getMonth(currentMonth);
   var expenses=md.expenses||[];
@@ -1565,6 +1566,22 @@ function renderMasterTab(){
   }
   h+='<button class="btn-plus" onclick="openMasterModal(\'agency\',\'\')">＋ 代理店を追加</button></div>';
 
+  // 定期経費
+  h+='<div class="card"><div class="ch">🔄 定期経費マスタ</div>';
+  if(!(master.recurringExpenses||[]).length){h+='<div class="empty">まだ登録されていません</div>';}
+  else{
+    (master.recurringExpenses||[]).forEach(function(r){
+      h+='<div class="master-item">'
+        +'<div class="master-info"><div class="master-name">'+esc(r.kubun)+' / '+esc(r.kamoku)+'</div>'
+        +'<div class="master-sub">¥'+(+r.amount||0).toLocaleString()+(r.detail?' — '+esc(r.detail):'')+'</div></div>'
+        +'<div class="master-actions">'
+        +'<button class="btn bd" onclick="openMasterModal(\'recurring\',\''+r.id+'\')">編集</button>'
+        +'<button class="btn bs" onclick="deleteMaster(\'recurring\',\''+r.id+'\')">削除</button>'
+        +'</div></div>';
+    });
+  }
+  h+='<button class="btn-plus" onclick="openMasterModal(\'recurring\',\'\')">＋ 定期経費を追加</button></div>';
+
   // ブックマークレット
   h+='<div class="card"><div class="ch">🔖 FANZAブックマークレット</div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:10px">FANZA管理画面の精算ページで実行すると、全タレントのポイントを一括取込できます。</div>'
@@ -1815,6 +1832,15 @@ function openMasterModal(type,id){
       +'<div style="font-size:12px;color:var(--text3);margin:6px 0 4px">項目</div>'
       +'<div id="mm-out-rows" style="display:flex;flex-direction:column;gap:6px"></div>'
       +'<button type="button" onclick="addOutRow()" style="margin-top:8px;padding:6px 14px;border:1px dashed var(--blue);border-radius:var(--r);background:var(--bg);color:var(--blue);cursor:pointer;font-size:13px;font-family:inherit">＋ 項目を追加</button>';
+  }else if(type==="recurring"){
+    var rr=id?(master.recurringExpenses||[]).find(function(x){return x.id===id;}):{};
+    var kubunOpts2='',kamokuOpts2='';
+    KUBUN.forEach(function(k){kubunOpts2+='<option'+(k===(rr&&rr.kubun)?' selected':'')+'>'+k+'</option>';});
+    KAMOKU.forEach(function(k){kamokuOpts2+='<option'+(k===(rr&&rr.kamoku)?' selected':'')+'>'+k+'</option>';});
+    body='<div class="mrow"><label>区分</label><select id="mm-rec-kubun">'+kubunOpts2+'</select></div>'
+      +'<div class="mrow"><label>科目</label><select id="mm-rec-kamoku">'+kamokuOpts2+'</select></div>'
+      +'<div class="mrow"><label>金額</label><input type="number" id="mm-rec-amount" value="'+(rr&&rr.amount!=null?rr.amount:"")+'" placeholder="0" style="width:120px"></div>'
+      +'<div class="mrow"><label>摘要</label><input type="text" id="mm-rec-detail" value="'+(rr&&rr.detail?esc(rr.detail):"")+'" placeholder="例: 家賃（関ケ原）"></div>';
   }else if(type==="agency"){
     var a=id?(master.agencies||[]).find(function(x){return x.id===id;}):{};
     body='<div class="mrow"><label>代理店名</label><input type="text" id="mm-name" value="'+(a&&a.name?esc(a.name):"")+'" placeholder="例: ○○プロ"></div>'
@@ -2301,6 +2327,21 @@ function getHoshoTotal(entry){
   if(!entry.hoshoEntries||!entry.hoshoEntries.length)return 0;
   return entry.hoshoEntries.reduce(function(s,e){return s+(+(e.amount||0));},0);
 }
+function autoInsertRecurring(){
+  if(!(master.recurringExpenses||[]).length)return;
+  var curMd=getMonth(currentMonth);
+  if(!curMd.expenses)curMd.expenses=[];
+  var changed=false;
+  master.recurringExpenses.forEach(function(r){
+    var exists=curMd.expenses.some(function(e){return e.recurringId===r.id;});
+    if(!exists){
+      var dateStr=currentMonth+'-01';
+      curMd.expenses=curMd.expenses.concat([{id:uid(),date:dateStr,kubun:r.kubun,kamoku:r.kamoku,amount:r.amount,detail:r.detail,recurringId:r.id}]);
+      changed=true;
+    }
+  });
+  if(changed)setMonth(currentMonth,curMd);
+}
 function autoCarryForward(){
   var p=currentMonth.split("-");var y=+p[0],m=+p[1];
   m--;if(m<1){m=12;y--;}
@@ -2428,6 +2469,18 @@ function saveMasterModal(){
       var existId=(oid&&oldMap[oid])?oid:uid();
       master.outsource=master.outsource.concat([Object.assign({id:existId},entry)]);
     });
+  }else if(type==="recurring"){
+    var recKubun=(document.getElementById('mm-rec-kubun')||{}).value||'';
+    var recKamoku=(document.getElementById('mm-rec-kamoku')||{}).value||'';
+    var recAmount=parseFloat((document.getElementById('mm-rec-amount')||{}).value)||0;
+    var recDetail=((document.getElementById('mm-rec-detail')||{}).value||'').trim();
+    if(!recKubun||!recKamoku){alert("区分と科目を選択してください");return;}
+    if(!master.recurringExpenses)master.recurringExpenses=[];
+    if(id){
+      master.recurringExpenses=master.recurringExpenses.map(function(r){return r.id===id?Object.assign({},r,{kubun:recKubun,kamoku:recKamoku,amount:recAmount,detail:recDetail}):r;});
+    }else{
+      master.recurringExpenses=master.recurringExpenses.concat([{id:uid(),kubun:recKubun,kamoku:recKamoku,amount:recAmount,detail:recDetail}]);
+    }
   }else if(type==="agency"){
     if(!name.trim()){alert("代理店名を入力してください");return;}
     if(!master.agencies)master.agencies=[];
@@ -2455,6 +2508,7 @@ function deleteMaster(type,id){
   else if(type==="staff") master.staff=master.staff.filter(function(x){return x.id!==id;});
   else if(type==="outsource") master.outsource=master.outsource.filter(function(x){return x.id!==id;});
   else if(type==="agency"){master.agencies=(master.agencies||[]).filter(function(x){return x.id!==id;});master.talents=master.talents.map(function(t){return t.agencyId===id?Object.assign({},t,{agencyId:""}):t;});}
+  else if(type==="recurring")master.recurringExpenses=(master.recurringExpenses||[]).filter(function(x){return x.id!==id;});
   scheduleSaveMaster();render();
 }
 
