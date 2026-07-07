@@ -2149,10 +2149,12 @@ function openPaymentNotice(oid){
       +'<thead><tr style="background:#f5f5f4">'
       +'<th style="padding:6px 8px;border:1px solid #ccc;text-align:left">明細</th>'
       +'<th style="padding:6px 8px;border:1px solid #ccc;text-align:right">ポイント</th>'
+      +'<th style="padding:6px 8px;border:1px solid #ccc;text-align:right">料率</th>'
       +'<th style="padding:6px 8px;border:1px solid #ccc;text-align:right">金額</th>'
       +'</tr></thead><tbody>';
     h+='<tr><td style="padding:6px 8px;border:1px solid #ccc">'+periodStr+' 外注報酬合計</td>'
       +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right">'+pts.toLocaleString()+'pt</td>'
+      +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right">50%</td>'
       +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right">¥'+total.toLocaleString()+'</td></tr>';
     h+='</tbody></table>';
     h+='<div style="font-size:12px;color:#555">支払予定日：'+payDate+'<br>※土日祝の場合、翌銀行営業日になります。</div></div>';
