@@ -737,7 +737,7 @@ function renderTalent(){
       +'<div style="display:flex;align-items:center;gap:10px">'
       +'<span style="color:var(--red)" id="tt-'+t.id+'">'+yen(tTotal)+'</span>'
 +(t.colabo?'<span style="font-size:11px;color:var(--text3)">2人配信</span>'
-      :('<button class="btn be" onclick="openTalentNotice(\''+t.id+'\')" title="支払通知書" style="background:#6c757d;color:#fff">PDF</button>'
+      :('<button class="btn be" onclick="openTalentNotice(\''+t.id+'\')" title="支払通知書" style="background:#1a6fc4;color:#fff;border-radius:4px;padding:5px 10px;font-size:12px;opacity:1">🖨️ PDF</button>'
       +'<button class="btn be" onclick="sendLineNotice(\''+t.id+'\')" title="LINE送信" style="background:#06c755;color:#fff">LINE</button>'))
       +'</div>'
       +(tDailyDeduct>0||tRyouhiDeduct>0||tHosho>0?'<div style="font-size:12px;color:var(--text3);margin-top:2px">'
@@ -1046,7 +1046,7 @@ function renderGaichuu(){
       var rateCell=items.length===1?'<td class="tr">'+itemRows[0].dispRate+'</td>':'<td class="tr" style="font-size:11px;color:var(--text3)">複数</td>';
       h+='<tr><td class="fw">'+esc(gName)+'</td>'+ptCell+rateCell
         +'<td class="tr fw">'+yen(groupTotal)+'</td>'
-        +'<td style="white-space:nowrap;padding:4px 6px">'+(hasAbe?'<button class="btn be" onclick="openPaymentNotice(\''+abeId+'\')" title="支払通知書">🖨️</button>':hasPdf?'<button class="btn be" onclick="openPaymentNotice(\''+pdfId+'\')" title="支払通知書">🖨️</button>':'')+'</td></tr>';
+        +'<td style="white-space:nowrap;padding:4px 6px">'+(hasAbe?'<button class="btn be" onclick="openPaymentNotice(\''+abeId+'\')" title="支払通知書" style="background:#1a6fc4;color:#fff;border-radius:4px;padding:5px 10px;font-size:12px;opacity:1">🖨️ PDF</button>':hasPdf?'<button class="btn be" onclick="openPaymentNotice(\''+pdfId+'\')" title="支払通知書" style="background:#1a6fc4;color:#fff;border-radius:4px;padding:5px 10px;font-size:12px;opacity:1">🖨️ PDF</button>':'')+'</td></tr>';
       // 明細アコーディオン（複数項目またはタレント紐づきあり）
       var detailCount=itemRows.reduce(function(n,r){return n+(r.hasLinked?r.linked.length:1);},0);
       if(items.length>1||itemRows.some(function(r){return r.hasLinked;})){
@@ -1124,7 +1124,7 @@ function renderGaichuu(){
         +'<td class="tr" style="color:var(--text2)">'+agPts.toLocaleString()+' </td>'
         +'<td class="tr">'+combinedRate+'%</td>'
         +'<td class="tr fw">'+yen(agAmt)+'</td>'
-        +'<td style="white-space:nowrap;padding:4px 6px"><button class="btn be" onclick="openAgencyPaymentNotice(\''+ag.id+'\')" title="支払通知書">🖨️</button></td></tr>';
+        +'<td style="white-space:nowrap;padding:4px 6px"><button class="btn be" onclick="openAgencyPaymentNotice(\''+ag.id+'\')" title="支払通知書" style="background:#1a6fc4;color:#fff;border-radius:4px;padding:5px 10px;font-size:12px;opacity:1">🖨️ PDF</button></td></tr>';
       if(agTalents.length>0){
         var agOdId='od-ag-'+ag.id;
         h+='<tr><td colspan="5" style="padding:0"><div style="padding:4px 10px;background:var(--bg2);border-bottom:1px solid var(--border)">'
