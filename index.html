@@ -1965,7 +1965,7 @@ async function sendLineNotice(tid){
 async function sendLineNoticeAll(){
   if(LINE_GAS_URL==="YOUR_LINE_GAS_URL_HERE"){alert("LINE_GAS_URLを設定してください");return;}
   if(!window.html2canvas||!window.jspdf){alert("PDFライブラリ読み込み中です。少し待って再試行してください");return;}
-  var talents=master.talents.filter(function(t){return t.realName;});
+  var talents=master.talents.filter(function(t){return t.realName&&(!t.retiredFrom||currentMonth<t.retiredFrom);});
   if(!talents.length){alert("本名が設定されているタレントがいません");return;}
   if(!confirm(talents.length+"名に一括送信します。よろしいですか？")){return;}
   var sent=[],skipped=[],failed=[];
