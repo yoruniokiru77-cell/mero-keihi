@@ -716,8 +716,9 @@ function renderTalent(){
       +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px">'
       +'<div style="display:flex;align-items:center;gap:10px">'
       +'<span style="color:var(--red)" id="tt-'+t.id+'">'+yen(tTotal)+'</span>'
-      +'<button class="btn be" onclick="openTalentNotice(\''+t.id+'\')" title="支払通知書" style="background:#6c757d;color:#fff">PDF</button>'
-      +'<button class="btn be" onclick="sendLineNotice(\''+t.id+'\')" title="LINE送信" style="background:#06c755;color:#fff">LINE</button>'
++(t.colabo?'<span style="font-size:11px;color:var(--text3)">2人配信</span>'
+      :('<button class="btn be" onclick="openTalentNotice(\''+t.id+'\')" title="支払通知書" style="background:#6c757d;color:#fff">PDF</button>'
+      +'<button class="btn be" onclick="sendLineNotice(\''+t.id+'\')" title="LINE送信" style="background:#06c755;color:#fff">LINE</button>'))
       +'</div>'
       +(tDailyDeduct>0||tRyouhiDeduct>0||tHosho>0?'<div style="font-size:12px;color:var(--text3);margin-top:2px">'
         +(tDailyDeduct>0?'日払い −'+yen(tDailyDeduct)+'　':'')
@@ -1706,7 +1707,22 @@ function openMasterModal(type,id){
       +'<button type="button" onclick="addNoticeItem()" style="margin-top:8px;padding:6px 14px;border:1px dashed var(--blue);border-radius:var(--r);background:var(--bg);color:var(--blue);cursor:pointer;font-size:13px;font-family:inherit">＋ 項目を追加</button>'
       +'</div>'
       +'<div class="mrow"><label>退職月<span style="font-size:11px;color:var(--text3);margin-left:6px">設定した月以降は非表示</span></label>'
-      +'<input type="month" id="mm-retired" value="'+(t&&t.retiredFrom?t.retiredFrom:"")+'" style="max-width:180px"></div>';
+      +'<input type="month" id="mm-retired" value="'+(t&&t.retiredFrom?t.retiredFrom:"")+'" style="max-width:180px"></div>'
+      +'<div class="mrow"><label>コラボ配信タレント</label>'
+      +'<label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="mm-colabo" onchange="toggleColaboFields()" '+(t&&t.colabo?'checked':'')+'>このタレントはコラボ配信専用（PDF/LINEボタン非表示）</label>'
+      +'<div id="mm-colabo-fields" style="margin-top:10px;display:'+(t&&t.colabo?'flex':'none')+';flex-direction:column;gap:8px">'
+      +'<div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;color:var(--text2);min-width:70px">パートナー1</span>'
+      +'<select id="mm-colabo-p1" style="flex:1;padding:6px 8px;font-size:14px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text)">'
+      +'<option value="">選択</option>'
+      +master.talents.filter(function(x){return !x.colabo&&x.id!==(id||'');}).map(function(x){var sel=(t&&t.colaboPartners&&t.colaboPartners[0]===x.id)?' selected':'';return'<option value="'+x.id+'"'+sel+'>'+(x.realName||x.name)+'</option>';}).join('')
+      +'</select></div>'
+      +'<div style="display:flex;align-items:center;gap:8px"><span style="font-size:13px;color:var(--text2);min-width:70px">パートナー2</span>'
+      +'<select id="mm-colabo-p2" style="flex:1;padding:6px 8px;font-size:14px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text)">'
+      +'<option value="">選択</option>'
+      +master.talents.filter(function(x){return !x.colabo&&x.id!==(id||'');}).map(function(x){var sel=(t&&t.colaboPartners&&t.colaboPartners[1]===x.id)?' selected':'';return'<option value="'+x.id+'"'+sel+'>'+(x.realName||x.name)+'</option>';}).join('')
+      +'</select></div>'
+      +'</div>'
+      +'</div>';
   }else if(type==="staff"){
     var s=id?master.staff.find(function(x){return x.id===id;}):{};
     body='<div class="mrow"><label>氏名</label><input type="text" id="mm-name" value="'+(s&&s.name?esc(s.name):"")+'" placeholder="例: 山田 花子"></div>'
@@ -1778,6 +1794,11 @@ function toggleNiSign(btn){
   btn.style.color=isPlus?'var(--red)':'var(--text)';
 }
 function removeNoticeItem(btn){btn.parentElement.remove();}
+function toggleColaboFields(){
+  var cb=document.getElementById('mm-colabo');
+  var f=document.getElementById('mm-colabo-fields');
+  if(f)f.style.display=cb&&cb.checked?'flex':'none';
+}
 function togglePlatformBtn(btn){
   var on=btn.style.background.indexOf('var(--blue)')>=0||btn.style.background==='var(--blue)';
   btn.style.background=on?'var(--bg)':'var(--blue)';
@@ -1934,7 +1955,22 @@ function openTalentNotice(tid){
   var periodStr=y+'年'+m+'月後半分';
   var payDate=y+'年'+(m+1>12?1:m+1)+'月20日';
   var name=t.realName||t.name;
-  var rows=[],grandTotal=0;
+  var rows=[],grandTotal=0,colaboRows=[];
+  // コラボ分を先に計算してgrandTotalに含める
+  master.talents.filter(function(ct){
+    return ct.colabo&&ct.colaboPartners&&ct.colaboPartners.indexOf(tid)>=0;
+  }).forEach(function(ct){
+    (ct.platforms||[]).forEach(function(pid){
+      var pl=master.platforms.find(function(x){return x.id===pid;});if(!pl)return;
+      var cEntry=((md.talent||{})[ct.id]||{})[pid]||{pts:0};
+      var cPts=Math.floor(+(cEntry.pts||0)/2);
+      if(cPts<=0)return;
+      var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:pl.rate;
+      var cAmt=Math.round(cPts*rate/100);
+      grandTotal+=cAmt;
+      colaboRows.push({label:'2人配信（'+esc(ct.name)+'）'+m+'月分 ÷2',pts:cPts,rate:rate,amt:cAmt});
+    });
+  });
   (t.platforms||[]).forEach(function(pid){
     var pl=master.platforms.find(function(x){return x.id===pid;});if(!pl)return;
     var entry=((md.talent||{})[t.id]||{})[pid]||{pts:0};
@@ -1984,6 +2020,13 @@ function openTalentNotice(tid){
       h+='<tr><td colspan="3" style="padding:6px 8px;border:1px solid #ccc;padding-left:20px;color:#080">補助</td>'
         +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right;color:#080">+¥'+r.hoshoTotal.toLocaleString()+'</td></tr>';
     }
+  });
+  // コラボ配信分（先に計算済みのcolaboRowsを描画）
+  colaboRows.forEach(function(cr){
+    h+='<tr style="background:#f0f8ff"><td style="padding:6px 8px;border:1px solid #ccc;padding-left:20px">'+cr.label+'</td>'
+      +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right">'+cr.pts.toLocaleString()+'pt</td>'
+      +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:center">'+cr.rate+'%</td>'
+      +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right">¥'+cr.amt.toLocaleString()+'</td></tr>';
   });
   var tNames=[t.name,t.realName].filter(Boolean);
   master.outsource.forEach(function(o2){
@@ -2175,10 +2218,14 @@ function saveMasterModal(){
       if(nm.trim()&&!isNaN(am)) noticeItems.push({name:nm.trim(),amount:sign*Math.abs(am)});
     });
     var retiredFrom=(document.getElementById("mm-retired")||{}).value||"";
+    var colabo=!!(document.getElementById("mm-colabo")||{}).checked;
+    var colaboP1=(document.getElementById("mm-colabo-p1")||{}).value||"";
+    var colaboP2=(document.getElementById("mm-colabo-p2")||{}).value||"";
+    var colaboPartners=colabo?[colaboP1,colaboP2].filter(Boolean):[];
     if(id){
-      master.talents=master.talents.map(function(t){return t.id===id?Object.assign({},t,{name:name,realName:realName,fanzaCharId:fanzaCharId,outsourceId:outsourceId,platforms:platforms,rates:rates,noticeItems:noticeItems,retiredFrom:retiredFrom}):t;});
+      master.talents=master.talents.map(function(t){return t.id===id?Object.assign({},t,{name:name,realName:realName,fanzaCharId:fanzaCharId,outsourceId:outsourceId,platforms:platforms,rates:rates,noticeItems:noticeItems,retiredFrom:retiredFrom,colabo:colabo,colaboPartners:colaboPartners}):t;});
     }else{
-      master.talents=master.talents.concat([{id:uid(),name:name,realName:realName,fanzaCharId:fanzaCharId,outsourceId:outsourceId,platforms:platforms,rates:rates,noticeItems:noticeItems,retiredFrom:retiredFrom}]);
+      master.talents=master.talents.concat([{id:uid(),name:name,realName:realName,fanzaCharId:fanzaCharId,outsourceId:outsourceId,platforms:platforms,rates:rates,noticeItems:noticeItems,retiredFrom:retiredFrom,colabo:colabo,colaboPartners:colaboPartners}]);
     }
   }else if(type==="staff"){
     var stype=(document.getElementById("mm-type")||{}).value||"fixed";
