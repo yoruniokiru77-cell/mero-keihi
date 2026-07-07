@@ -996,7 +996,7 @@ function renderGaichuu(){
     });
     groupOrder.forEach(function(gName){
       var items=groups[gName];
-      var groupTotal=0,groupPts=0,hasPt=false,hasAbe=false,abeId=null;
+      var groupTotal=0,groupPts=0,hasPt=false,hasAbe=false,abeId=null,hasPdf=false,pdfId=null;
       var itemRows=[];
       items.forEach(function(o){
         var linked=master.talents.filter(function(t){return t.outsourceId===o.id;});
@@ -1033,6 +1033,7 @@ function renderGaichuu(){
           hasAbe=true;abeId=o.id;
         }
         if(o.formula!=="fixed"){hasPt=true;groupPts+=pts;}
+        if(o.showPdf&&!hasAbe){hasPdf=true;pdfId=o.id;}
         groupTotal+=dispAmt;
         itemRows.push({o:o,pts:pts,dispAmt:dispAmt,dispRate:dispRate,hasLinked:hasLinked,linked:linked});
       });
@@ -1044,7 +1045,7 @@ function renderGaichuu(){
       var rateCell=items.length===1?'<td class="tr">'+itemRows[0].dispRate+'</td>':'<td class="tr" style="font-size:11px;color:var(--text3)">複数</td>';
       h+='<tr><td class="fw">'+esc(gName)+'</td>'+ptCell+rateCell
         +'<td class="tr fw">'+yen(groupTotal)+'</td>'
-        +'<td style="white-space:nowrap;padding:4px 6px">'+(hasAbe?'<button class="btn be" onclick="openPaymentNotice(\''+abeId+'\')" title="支払通知書">🖨️</button>':'')+'</td></tr>';
+        +'<td style="white-space:nowrap;padding:4px 6px">'+(hasAbe?'<button class="btn be" onclick="openPaymentNotice(\''+abeId+'\')" title="支払通知書">🖨️</button>':hasPdf?'<button class="btn be" onclick="openPaymentNotice(\''+pdfId+'\')" title="支払通知書">🖨️</button>':'')+'</td></tr>';
       // 明細アコーディオン（複数項目またはタレント紐づきあり）
       var detailCount=itemRows.reduce(function(n,r){return n+(r.hasLinked?r.linked.length:1);},0);
       if(items.length>1||itemRows.some(function(r){return r.hasLinked;})){
@@ -1806,6 +1807,7 @@ function addOutRow(o){
     +'<input type="number" placeholder="率%" class="out-rate-field" value="'+(o.rate||'')+'" style="width:60px;padding:6px 8px;font-size:13px;text-align:right;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text)'+(isFixed?';display:none':'')+'">'
     +'<input type="number" placeholder="金額" class="out-fixed-field" value="'+(o.fixedAmount||'')+'" style="width:80px;padding:6px 8px;font-size:13px;text-align:right;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text)'+(isFixed?'':';display:none')+'">'
     +'<input type="month" class="out-start-field" value="'+(o.startFrom||'')+'" title="開始月" style="padding:4px 6px;font-size:12px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);max-width:130px">'
+    +'<label title="🖨️ボタンをタブに表示" style="display:flex;align-items:center;gap:3px;font-size:12px;color:var(--text2);white-space:nowrap;cursor:pointer"><input type="checkbox" class="out-pdf-field"'+(o.showPdf?' checked':'')+'>PDF</label>'
     +'<button type="button" onclick="removeOutRow(this)" style="padding:4px 8px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg);color:var(--red);cursor:pointer;font-size:13px">×</button>';
   wrap.appendChild(div);
   if(!o.item) div.querySelector("input[type=text]").focus();
@@ -2118,7 +2120,6 @@ function openPaymentNotice(oid){
   var o=master.outsource.find(function(x){return x.id===oid;});
   if(!o)return;
   var md=getMonth(currentMonth);
-  // ポイント取得（紐づきタレントの合計）
   var linked=master.talents.filter(function(t){return t.outsourceId===oid;});
   var pts=0;
   if(linked.length>0){
@@ -2130,6 +2131,45 @@ function openPaymentNotice(oid){
     });
   }else{
     pts=+(md.outsource[oid]||0);
+  }
+  if(o.formula!=='abe'&&o.showPdf){
+    // シンプルPDF（手数料・消費税なし）
+    var today=new Date();
+    var dateStr=today.getFullYear()+'年'+(today.getMonth()+1)+'月'+today.getDate()+'日';
+    var p2=currentMonth.split('-');var y=p2[0],m=+p2[1];
+    var periodStr=y+'年'+m+'月後半分';
+    var payDate=y+'年'+(m+1>12?1:m+1)+'月20日';
+    // 外注報酬 + 紐づきタレント報酬の合計
+    var outAmt=calcOutAmt(o,pts);
+    var talAmt=0;
+    linked.forEach(function(t){
+      (t.platforms||[]).forEach(function(pid){
+        var pl=master.platforms.find(function(x){return x.id===pid;});if(!pl)return;
+        var entry=((md.talent||{})[t.id]||{})[pid]||{pts:0};
+        var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:pl.rate;
+        talAmt+=Math.round(+(entry.pts||0)*rate/100);
+      });
+    });
+    var total=outAmt+talAmt;
+    var h=buildNoticeHeader(dateStr,esc(o.name),'支払通知書',true);
+    h+='<div style="border:2px solid #000;padding:12px 20px;margin-bottom:20px;text-align:center">'
+      +'<div style="font-size:13px;margin-bottom:4px">お支払金額</div>'
+      +'<div style="font-size:28px;font-weight:800">¥'+total.toLocaleString()+'</div>'
+      +'</div>';
+    h+='<table style="width:100%;border-collapse:collapse;font-size:12px;margin-bottom:16px">'
+      +'<thead><tr style="background:#f5f5f4">'
+      +'<th style="padding:6px 8px;border:1px solid #ccc;text-align:left">明細</th>'
+      +'<th style="padding:6px 8px;border:1px solid #ccc;text-align:right">ポイント</th>'
+      +'<th style="padding:6px 8px;border:1px solid #ccc;text-align:right">金額</th>'
+      +'</tr></thead><tbody>';
+    h+='<tr><td style="padding:6px 8px;border:1px solid #ccc">'+periodStr+' 外注報酬合計</td>'
+      +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right">'+pts.toLocaleString()+'pt</td>'
+      +'<td style="padding:6px 8px;border:1px solid #ccc;text-align:right">¥'+total.toLocaleString()+'</td></tr>';
+    h+='</tbody></table>';
+    h+='<div style="font-size:12px;color:#555">支払予定日：'+payDate+'<br>※土日祝の場合、翌銀行営業日になります。</div></div>';
+    document.getElementById('noticeBody').innerHTML=h;
+    document.getElementById('noticeOverlay').classList.add('show');
+    return;
   }
   showNotice(esc(o.name),pts);
 }
@@ -2305,7 +2345,8 @@ function saveMasterModal(){
       var rt=parseFloat((row.querySelector(".out-rate-field")||{}).value)||0;
       var fx=parseFloat((row.querySelector(".out-fixed-field")||{}).value)||0;
       var sf=(row.querySelector(".out-start-field")||{}).value||"";
-      var entry={name:groupName.trim(),item:item.trim(),rate:rt,formula:fm,fixedAmount:fx,startFrom:sf};
+      var showPdf=!!(row.querySelector(".out-pdf-field")||{}).checked;
+      var entry={name:groupName.trim(),item:item.trim(),rate:rt,formula:fm,fixedAmount:fx,startFrom:sf,showPdf:showPdf};
       var existId=(oid&&oldMap[oid])?oid:uid();
       master.outsource=master.outsource.concat([Object.assign({id:existId},entry)]);
     });
