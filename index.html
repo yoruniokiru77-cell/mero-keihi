@@ -399,10 +399,15 @@ async function submitLogin(){
   btn.disabled=true;btn.textContent="ログイン中...";err.textContent="";
   try{
     var users=master.users||[];
-    if(users.length===0){err.textContent="ユーザーが登録されていません（マスタで登録してください）";return;}
     var h=await hashPw(pw);
-    var u=users.find(function(x){return x.userId===uid&&x.passwordHash===h;});
-    if(!u){err.textContent="IDまたはパスワードが違います";return;}
+    var u;
+    if(users.length===0){
+      if(uid==="admin"&&pw==="admin") u={userId:"admin"};
+      else{err.textContent="初回ログイン: ID「admin」パスワード「admin」でログインしてください";return;}
+    }else{
+      u=users.find(function(x){return x.userId===uid&&x.passwordHash===h;});
+      if(!u){err.textContent="IDまたはパスワードが違います";return;}
+    }
     currentUser={userId:u.userId};
     localStorage.setItem("mero_user",JSON.stringify(currentUser));
     hideLoginScreen();
