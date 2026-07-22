@@ -297,6 +297,27 @@ input[type=number]{text-align:right}
   </div>
 </div>
 
+<!-- ログイン画面 -->
+<div id="loginScreen" style="display:none;position:fixed;inset:0;background:var(--bg3);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--bg);border-radius:var(--rl);padding:32px 28px;width:320px;box-shadow:0 4px 24px rgba(0,0,0,.12)">
+    <div style="font-size:20px;font-weight:700;margin-bottom:4px">mero 収支</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:24px">ログインしてください</div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:12px;color:var(--text2);font-weight:600;display:block;margin-bottom:4px">ユーザーID</label>
+      <input id="loginId" type="text" autocomplete="username" placeholder="ID" onkeydown="if(event.key==='Enter')document.getElementById('loginPw').focus()" style="width:100%;padding:10px 12px;font-size:15px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-family:inherit;outline:none">
+    </div>
+    <div style="margin-bottom:20px">
+      <label style="font-size:12px;color:var(--text2);font-weight:600;display:block;margin-bottom:4px">パスワード</label>
+      <input id="loginPw" type="password" autocomplete="current-password" placeholder="パスワード" onkeydown="if(event.key==='Enter')submitLogin()" style="width:100%;padding:10px 12px;font-size:15px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);font-family:inherit;outline:none">
+    </div>
+    <div id="loginErr" style="font-size:12px;color:var(--red);margin-bottom:12px;min-height:16px"></div>
+    <button id="loginBtn" onclick="submitLogin()" style="width:100%;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:var(--r);font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">ログイン</button>
+  </div>
+</div>
+
+<!-- アプリ本体 -->
+<div id="appShell" style="display:none">
+
 <!-- ヘッダー -->
 <script>var KANPU_MODE=(new URLSearchParams(location.search).get("p")==="kanpu2026")||(location.hash==="#kanpu2026");</script>
 <header class="hdr">
@@ -311,6 +332,8 @@ input[type=number]{text-align:right}
     <button id="lockBtn" onclick="toggleLock()" style="padding:4px 10px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg);cursor:pointer;font-size:13px;font-family:inherit;display:none"></button>
     <span class="dot" id="dot"></span>
     <span class="slabel" id="slabel">接続中...</span>
+    <span id="userLabel" style="font-size:12px;color:var(--text3);margin-left:6px"></span>
+    <button onclick="authLogout()" style="padding:3px 8px;border-radius:var(--r);border:1px solid var(--border2);background:var(--bg);cursor:pointer;font-size:12px;font-family:inherit;color:var(--text2)">ログアウト</button>
   </div>
 </header>
 
@@ -324,12 +347,97 @@ input[type=number]{text-align:right}
 /* ===== 定数 ===== */
 var SB_URL="https://ctwbhyqlpnmhfiizpgab.supabase.co";
 var SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0d2JoeXFscG5taGZpaXpwZ2FiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NTcyMzcsImV4cCI6MjA5NDIzMzIzN30.evN-i3bHm156X6gNLtFJQWIw-YCUyqyEigltG0UD5z0";
+var MAIL_DOMAIN="@mero.local";
 var GAS_URL="https://script.google.com/macros/s/AKfycbwZdtgbE6OjbHfw1rjnuuJE2aTwfkLMa4pGcb3aobn3rhJBIbrFLSD-6-2wunu1sv0r0A/exec";
 var LINE_GAS_URL="https://script.google.com/macros/s/AKfycbwZdtgbE6OjbHfw1rjnuuJE2aTwfkLMa4pGcb3aobn3rhJBIbrFLSD-6-2wunu1sv0r0A/exec";
 var KUBUN=KANPU_MODE?["会社","関ケ","関プ","船田"]:["会社","関ケ","船田"];
 var KAMOKU=["旅費交通費","車両費","水道光熱費","通信費","家賃","租税公課","福利厚生費","消耗品費","会議費交際費","キャストとの飲食費","給料","その他"];
 var TABS=["収支","タレント","スタッフ","外注","経費","マスタ"];
 var TAB_ICONS={"収支":"📊","タレント":"🎤","スタッフ":"👥","外注":"🔗","経費":"🧾","マスタ":"⚙️"};
+
+/* ===== 認証 ===== */
+var session=null;
+function sbh(){
+  var tok=(session&&session.access_token)?session.access_token:SB_KEY;
+  return{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+tok};
+}
+function authEmail(userId){return userId.trim()+MAIL_DOMAIN;}
+async function authLogin(userId,password){
+  var r=await fetch(SB_URL+"/auth/v1/token?grant_type=password",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","apikey":SB_KEY},
+    body:JSON.stringify({email:authEmail(userId),password:password})
+  });
+  var j=await r.json();
+  if(!r.ok) throw new Error(j.error_description||j.msg||"ログイン失敗");
+  session={access_token:j.access_token,refresh_token:j.refresh_token,expires_at:Date.now()+j.expires_in*1000,user_id:userId};
+  localStorage.setItem("mero_session",JSON.stringify(session));
+}
+async function authRefresh(){
+  if(!session||!session.refresh_token) return false;
+  try{
+    var r=await fetch(SB_URL+"/auth/v1/token?grant_type=refresh_token",{
+      method:"POST",
+      headers:{"Content-Type":"application/json","apikey":SB_KEY},
+      body:JSON.stringify({refresh_token:session.refresh_token})
+    });
+    if(!r.ok) return false;
+    var j=await r.json();
+    session=Object.assign({},session,{access_token:j.access_token,refresh_token:j.refresh_token,expires_at:Date.now()+j.expires_in*1000});
+    localStorage.setItem("mero_session",JSON.stringify(session));
+    return true;
+  }catch(e){return false;}
+}
+async function authInit(){
+  try{
+    var s=localStorage.getItem("mero_session");
+    if(!s) return false;
+    session=JSON.parse(s);
+    if(Date.now()>session.expires_at-60000){
+      var ok=await authRefresh();
+      if(!ok){session=null;localStorage.removeItem("mero_session");return false;}
+    }
+    return true;
+  }catch(e){session=null;return false;}
+}
+function authLogout(){
+  if(session&&session.refresh_token){
+    fetch(SB_URL+"/auth/v1/logout",{method:"POST",headers:{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+(session.access_token||SB_KEY)}}).catch(function(){});
+  }
+  session=null;localStorage.removeItem("mero_session");
+  showLoginScreen();
+}
+function showLoginScreen(){
+  document.getElementById("appShell").style.display="none";
+  document.getElementById("loginScreen").style.display="flex";
+  document.getElementById("loginId").value="";
+  document.getElementById("loginPw").value="";
+  document.getElementById("loginErr").textContent="";
+}
+function hideLoginScreen(){
+  document.getElementById("loginScreen").style.display="none";
+  document.getElementById("appShell").style.display="";
+}
+async function submitLogin(){
+  var uid=document.getElementById("loginId").value.trim();
+  var pw=document.getElementById("loginPw").value;
+  var err=document.getElementById("loginErr");
+  var btn=document.getElementById("loginBtn");
+  if(!uid||!pw){err.textContent="IDとパスワードを入力してください";return;}
+  btn.disabled=true;btn.textContent="ログイン中...";err.textContent="";
+  try{
+    await authLogin(uid,pw);
+    hideLoginScreen();
+    updateUserLabel();
+    await dbLoad();render();
+  }catch(e){
+    err.textContent=e.message||"ログインに失敗しました";
+  }finally{btn.disabled=false;btn.textContent="ログイン";}
+}
+function updateUserLabel(){
+  var el=document.getElementById("userLabel");
+  if(el&&session) el.textContent=session.user_id;
+}
 
 /* ===== 状態 ===== */
 var master={platforms:[],talents:[],agencies:[],staff:[
@@ -354,7 +462,6 @@ function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").
 function fdt(d){if(!d)return"—";var p=d.split("-");return p.length===3?(+p[1])+"/"+(+p[2]):d;}
 function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
 function fmtMonth(ym){var p=ym.split("-");return p[0]+"年"+String(+p[1])+"月";}
-function sbh(){return{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY};}
 function setSync(s,l){var d=document.getElementById("dot"),lb=document.getElementById("slabel");if(d)d.className="dot "+s;if(lb)lb.textContent=l;}
 
 /* ===== ロック ===== */
@@ -2593,11 +2700,16 @@ function deleteMaster(type,id){
 
 /* ===== 初期化 ===== */
 (async function(){
+  var ok=await authInit();
+  if(!ok){showLoginScreen();return;}
+  hideLoginScreen();
+  updateUserLabel();
   await dbLoad();
   render();
 })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</div><!-- /appShell -->
 </body>
 </html>
