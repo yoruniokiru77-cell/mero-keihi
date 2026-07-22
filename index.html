@@ -408,7 +408,7 @@ async function submitLogin(){
       u=users.find(function(x){return x.userId===uid&&x.passwordHash===h;});
       if(!u){err.textContent="IDまたはパスワードが違います";return;}
     }
-    currentUser={userId:u.userId};
+    currentUser={userId:u.userId,role:u.role||"admin"};
     localStorage.setItem("mero_user",JSON.stringify(currentUser));
     hideLoginScreen();
     updateUserLabel();
@@ -446,11 +446,13 @@ function fmtMonth(ym){var p=ym.split("-");return p[0]+"年"+String(+p[1])+"月";
 function setSync(s,l){var d=document.getElementById("dot"),lb=document.getElementById("slabel");if(d)d.className="dot "+s;if(lb)lb.textContent=l;}
 
 /* ===== ロック ===== */
-function isLocked(){return !!(monthly[currentMonth]||{}).locked;}
+function isAdmin(){return !currentUser||currentUser.role==="admin";}
+function isLocked(){return !isAdmin()||!!(monthly[currentMonth]||{}).locked;}
 function updateLockBtn(){
   var btn=document.getElementById("lockBtn");if(!btn)return;
+  if(!isAdmin()){btn.style.display="none";return;}
   btn.style.display="inline-block";
-  if(isLocked()){btn.textContent="🔒 ロック中";btn.style.color="var(--red)";}
+  if((monthly[currentMonth]||{}).locked){btn.textContent="🔒 ロック中";btn.style.color="var(--red)";}
   else{btn.textContent="🔓 ロック";btn.style.color="var(--text2)";}
 }
 function toggleLock(){
@@ -1755,9 +1757,12 @@ function renderMasterTab(){
   if(users.length===0){h+='<div class="empty">ユーザーが登録されていません</div>';}
   else{
     users.forEach(function(u){
-      h+='<div class="mitem"><span class="mname">'+esc(u.userId)+'</span>'
+      var roleBadge=u.role==="staff"
+        ?'<span style="font-size:11px;background:var(--bg3);color:var(--text2);border:1px solid var(--border2);border-radius:4px;padding:1px 6px;margin-left:6px">スタッフ</span>'
+        :'<span style="font-size:11px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue);border-radius:4px;padding:1px 6px;margin-left:6px">管理者</span>';
+      h+='<div class="mitem"><span class="mname">'+esc(u.userId)+roleBadge+'</span>'
         +'<div class="mbtns">'
-        +'<button class="btn bd" onclick="openUserModal(\''+esc(u.userId)+'\')">PW変更</button>'
+        +'<button class="btn bd" onclick="openUserModal(\''+esc(u.userId)+'\')">編集</button>'
         +'<button class="btn bs" onclick="deleteUser(\''+esc(u.userId)+'\')">削除</button>'
         +'</div></div>';
     });
@@ -2701,9 +2706,16 @@ function openUserModal(userId){
   var isNew=!userId;
   document.getElementById("userModalTitle").textContent=isNew?"ユーザー追加":"パスワード変更";
   document.getElementById("userModalErr").textContent="";
+  var existRole=(master.users||[]).find(function(u){return u.userId===userId;});
+  existRole=existRole?existRole.role:"admin";
   var body='<div class="mrow"><label>ユーザーID</label>'
     +'<input type="text" id="um-uid" value="'+esc(userId)+'" placeholder="例: admin"'+(isNew?'':' readonly style="opacity:.6"')
     +' style="width:100%;padding:8px 10px;font-size:14px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);box-sizing:border-box"></div>'
+    +'<div class="mrow"><label>権限</label>'
+    +'<select id="um-role" style="width:100%;padding:8px 10px;font-size:14px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text)">'
+    +'<option value="admin"'+(existRole==="admin"?" selected":"")+'>管理者（全編集可）</option>'
+    +'<option value="staff"'+(existRole==="staff"?" selected":"")+'>スタッフ（閲覧のみ）</option>'
+    +'</select></div>'
     +'<div class="mrow"><label>'+(isNew?"パスワード":"新しいパスワード")+'</label>'
     +'<input type="password" id="um-pw" placeholder="パスワードを入力" style="width:100%;padding:8px 10px;font-size:14px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);box-sizing:border-box"></div>'
     +'<div class="mrow"><label>パスワード確認</label>'
@@ -2722,12 +2734,13 @@ async function saveUserModal(){
   if(!pw){err.textContent="パスワードを入力してください";return;}
   if(pw!==pw2){err.textContent="パスワードが一致しません";return;}
   var h=await hashPw(pw);
+  var role=document.getElementById("um-role").value;
   if(!master.users)master.users=[];
   if(userModalTarget){
-    master.users=master.users.map(function(u){return u.userId===userModalTarget?{userId:u.userId,passwordHash:h}:u;});
+    master.users=master.users.map(function(u){return u.userId===userModalTarget?{userId:u.userId,passwordHash:h,role:role}:u;});
   }else{
     if(master.users.find(function(u){return u.userId===uid;})){err.textContent="そのIDはすでに使われています";return;}
-    master.users=master.users.concat([{userId:uid,passwordHash:h}]);
+    master.users=master.users.concat([{userId:uid,passwordHash:h,role:role}]);
   }
   scheduleSaveMaster();
   closeUserModal();
