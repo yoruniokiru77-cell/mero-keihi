@@ -297,6 +297,19 @@ input[type=number]{text-align:right}
   </div>
 </div>
 
+<!-- ユーザーモーダル -->
+<div class="overlay" id="userOverlay" onclick="if(event.target===this)closeUserModal()" style="display:none">
+  <div class="modal">
+    <h3 id="userModalTitle">ユーザー追加</h3>
+    <div id="userModalBody"></div>
+    <div id="userModalErr" style="font-size:12px;color:var(--red);min-height:16px;margin-bottom:8px"></div>
+    <div class="mbtns">
+      <button class="btn bp" onclick="saveUserModal()" style="flex:1">保存</button>
+      <button class="btn bo" onclick="closeUserModal()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
 <!-- ログイン画面 -->
 <div id="loginScreen" style="display:none;position:fixed;inset:0;background:var(--bg3);z-index:9999;align-items:center;justify-content:center">
   <div style="background:var(--bg);border-radius:var(--rl);padding:32px 28px;width:320px;box-shadow:0 4px 24px rgba(0,0,0,.12)">
@@ -347,7 +360,6 @@ input[type=number]{text-align:right}
 /* ===== 定数 ===== */
 var SB_URL="https://ctwbhyqlpnmhfiizpgab.supabase.co";
 var SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0d2JoeXFscG5taGZpaXpwZ2FiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg2NTcyMzcsImV4cCI6MjA5NDIzMzIzN30.evN-i3bHm156X6gNLtFJQWIw-YCUyqyEigltG0UD5z0";
-var MAIL_DOMAIN="@mero.local";
 var GAS_URL="https://script.google.com/macros/s/AKfycbwZdtgbE6OjbHfw1rjnuuJE2aTwfkLMa4pGcb3aobn3rhJBIbrFLSD-6-2wunu1sv0r0A/exec";
 var LINE_GAS_URL="https://script.google.com/macros/s/AKfycbwZdtgbE6OjbHfw1rjnuuJE2aTwfkLMa4pGcb3aobn3rhJBIbrFLSD-6-2wunu1sv0r0A/exec";
 var KUBUN=KANPU_MODE?["会社","関ケ","関プ","船田"]:["会社","関ケ","船田"];
@@ -356,57 +368,17 @@ var TABS=["収支","タレント","スタッフ","外注","経費","マスタ"];
 var TAB_ICONS={"収支":"📊","タレント":"🎤","スタッフ":"👥","外注":"🔗","経費":"🧾","マスタ":"⚙️"};
 
 /* ===== 認証 ===== */
-var session=null;
-function sbh(){
-  var tok=(session&&session.access_token)?session.access_token:SB_KEY;
-  return{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+tok};
+var currentUser=null;
+function sbh(){return{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+SB_KEY};}
+async function hashPw(pw){
+  var buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(pw));
+  return Array.from(new Uint8Array(buf)).map(function(b){return b.toString(16).padStart(2,"0");}).join("");
 }
-function authEmail(userId){return userId.trim()+MAIL_DOMAIN;}
-async function authLogin(userId,password){
-  var r=await fetch(SB_URL+"/auth/v1/token?grant_type=password",{
-    method:"POST",
-    headers:{"Content-Type":"application/json","apikey":SB_KEY},
-    body:JSON.stringify({email:authEmail(userId),password:password})
-  });
-  var j=await r.json();
-  if(!r.ok) throw new Error(j.error_description||j.msg||"ログイン失敗");
-  session={access_token:j.access_token,refresh_token:j.refresh_token,expires_at:Date.now()+j.expires_in*1000,user_id:userId};
-  localStorage.setItem("mero_session",JSON.stringify(session));
+function authInit(){
+  try{var s=localStorage.getItem("mero_user");if(s)currentUser=JSON.parse(s);}catch(e){}
+  return !!currentUser;
 }
-async function authRefresh(){
-  if(!session||!session.refresh_token) return false;
-  try{
-    var r=await fetch(SB_URL+"/auth/v1/token?grant_type=refresh_token",{
-      method:"POST",
-      headers:{"Content-Type":"application/json","apikey":SB_KEY},
-      body:JSON.stringify({refresh_token:session.refresh_token})
-    });
-    if(!r.ok) return false;
-    var j=await r.json();
-    session=Object.assign({},session,{access_token:j.access_token,refresh_token:j.refresh_token,expires_at:Date.now()+j.expires_in*1000});
-    localStorage.setItem("mero_session",JSON.stringify(session));
-    return true;
-  }catch(e){return false;}
-}
-async function authInit(){
-  try{
-    var s=localStorage.getItem("mero_session");
-    if(!s) return false;
-    session=JSON.parse(s);
-    if(Date.now()>session.expires_at-60000){
-      var ok=await authRefresh();
-      if(!ok){session=null;localStorage.removeItem("mero_session");return false;}
-    }
-    return true;
-  }catch(e){session=null;return false;}
-}
-function authLogout(){
-  if(session&&session.refresh_token){
-    fetch(SB_URL+"/auth/v1/logout",{method:"POST",headers:{"Content-Type":"application/json","apikey":SB_KEY,"Authorization":"Bearer "+(session.access_token||SB_KEY)}}).catch(function(){});
-  }
-  session=null;localStorage.removeItem("mero_session");
-  showLoginScreen();
-}
+function authLogout(){currentUser=null;localStorage.removeItem("mero_user");showLoginScreen();}
 function showLoginScreen(){
   document.getElementById("appShell").style.display="none";
   document.getElementById("loginScreen").style.display="flex";
@@ -426,21 +398,25 @@ async function submitLogin(){
   if(!uid||!pw){err.textContent="IDとパスワードを入力してください";return;}
   btn.disabled=true;btn.textContent="ログイン中...";err.textContent="";
   try{
-    await authLogin(uid,pw);
+    var users=master.users||[];
+    if(users.length===0){err.textContent="ユーザーが登録されていません（マスタで登録してください）";return;}
+    var h=await hashPw(pw);
+    var u=users.find(function(x){return x.userId===uid&&x.passwordHash===h;});
+    if(!u){err.textContent="IDまたはパスワードが違います";return;}
+    currentUser={userId:u.userId};
+    localStorage.setItem("mero_user",JSON.stringify(currentUser));
     hideLoginScreen();
     updateUserLabel();
-    await dbLoad();render();
-  }catch(e){
-    err.textContent=e.message||"ログインに失敗しました";
+    render();
   }finally{btn.disabled=false;btn.textContent="ログイン";}
 }
 function updateUserLabel(){
   var el=document.getElementById("userLabel");
-  if(el&&session) el.textContent=session.user_id;
+  if(el&&currentUser) el.textContent=currentUser.userId;
 }
 
 /* ===== 状態 ===== */
-var master={platforms:[],talents:[],agencies:[],staff:[
+var master={platforms:[],talents:[],agencies:[],users:[],staff:[
   {id:"s1",name:"関島 悠太",type:"fixed",amount:400000},
   {id:"s2",name:"船田 真史",type:"fixed",amount:400000},
   {id:"s3",name:"小澤 海誠",type:"fixed",amount:550000},
@@ -1768,6 +1744,21 @@ function renderMasterTab(){
   }
   h+='<button class="btn-plus" onclick="openMasterModal(\'recurring\',\'\')">＋ 定期経費を追加</button></div>';
 
+  // ユーザー管理
+  h+='<div class="card"><div class="ch">👤 ユーザー管理</div>';
+  var users=master.users||[];
+  if(users.length===0){h+='<div class="empty">ユーザーが登録されていません</div>';}
+  else{
+    users.forEach(function(u){
+      h+='<div class="mitem"><span class="mname">'+esc(u.userId)+'</span>'
+        +'<div class="mbtns">'
+        +'<button class="btn bd" onclick="openUserModal(\''+esc(u.userId)+'\')">PW変更</button>'
+        +'<button class="btn bs" onclick="deleteUser(\''+esc(u.userId)+'\')">削除</button>'
+        +'</div></div>';
+    });
+  }
+  h+='<button class="btn-plus" onclick="openUserModal(\'\')">＋ ユーザーを追加</button></div>';
+
   // ブックマークレット
   h+='<div class="card"><div class="ch">🔖 FANZAブックマークレット</div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:10px">FANZA管理画面の精算ページで実行すると、全タレントのポイントを一括取込できます。</div>'
@@ -2698,13 +2689,58 @@ function deleteMaster(type,id){
   scheduleSaveMaster();render();
 }
 
+/* ===== ユーザー管理 ===== */
+var userModalTarget="";
+function openUserModal(userId){
+  userModalTarget=userId;
+  var isNew=!userId;
+  document.getElementById("userModalTitle").textContent=isNew?"ユーザー追加":"パスワード変更";
+  document.getElementById("userModalErr").textContent="";
+  var body='<div class="mrow"><label>ユーザーID</label>'
+    +'<input type="text" id="um-uid" value="'+esc(userId)+'" placeholder="例: admin"'+(isNew?'':' readonly style="opacity:.6"')
+    +' style="width:100%;padding:8px 10px;font-size:14px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);box-sizing:border-box"></div>'
+    +'<div class="mrow"><label>'+(isNew?"パスワード":"新しいパスワード")+'</label>'
+    +'<input type="password" id="um-pw" placeholder="パスワードを入力" style="width:100%;padding:8px 10px;font-size:14px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);box-sizing:border-box"></div>'
+    +'<div class="mrow"><label>パスワード確認</label>'
+    +'<input type="password" id="um-pw2" placeholder="もう一度入力" style="width:100%;padding:8px 10px;font-size:14px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);box-sizing:border-box"></div>';
+  document.getElementById("userModalBody").innerHTML=body;
+  document.getElementById("userOverlay").style.display="flex";
+  document.getElementById("um-uid").focus();
+}
+function closeUserModal(){document.getElementById("userOverlay").style.display="none";}
+async function saveUserModal(){
+  var uid=(document.getElementById("um-uid").value||"").trim();
+  var pw=document.getElementById("um-pw").value;
+  var pw2=document.getElementById("um-pw2").value;
+  var err=document.getElementById("userModalErr");
+  if(!uid){err.textContent="IDを入力してください";return;}
+  if(!pw){err.textContent="パスワードを入力してください";return;}
+  if(pw!==pw2){err.textContent="パスワードが一致しません";return;}
+  var h=await hashPw(pw);
+  if(!master.users)master.users=[];
+  if(userModalTarget){
+    master.users=master.users.map(function(u){return u.userId===userModalTarget?{userId:u.userId,passwordHash:h}:u;});
+  }else{
+    if(master.users.find(function(u){return u.userId===uid;})){err.textContent="そのIDはすでに使われています";return;}
+    master.users=master.users.concat([{userId:uid,passwordHash:h}]);
+  }
+  scheduleSaveMaster();
+  closeUserModal();
+  render();
+}
+function deleteUser(userId){
+  if(!confirm(userId+" を削除しますか？"))return;
+  master.users=(master.users||[]).filter(function(u){return u.userId!==userId;});
+  scheduleSaveMaster();render();
+}
+
 /* ===== 初期化 ===== */
 (async function(){
-  var ok=await authInit();
+  await dbLoad();
+  var ok=authInit();
   if(!ok){showLoginScreen();return;}
   hideLoginScreen();
   updateUserLabel();
-  await dbLoad();
   render();
 })();
 </script>
