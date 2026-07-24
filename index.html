@@ -369,8 +369,8 @@ var GAS_URL="https://script.google.com/macros/s/AKfycbwZdtgbE6OjbHfw1rjnuuJE2aTw
 var LINE_GAS_URL="https://script.google.com/macros/s/AKfycbwZdtgbE6OjbHfw1rjnuuJE2aTwfkLMa4pGcb3aobn3rhJBIbrFLSD-6-2wunu1sv0r0A/exec";
 var KUBUN=KANPU_MODE?["会社","関ケ","関プ","船田"]:["会社","関ケ","船田"];
 var KAMOKU=["旅費交通費","車両費","水道光熱費","通信費","家賃","租税公課","福利厚生費","消耗品費","会議費交際費","キャストとの飲食費","給料","その他"];
-var TABS=["収支","外注","経費","マスタ"];
-var TAB_ICONS={"収支":"📊","外注":"🔗","経費":"🧾","マスタ":"⚙️"};
+var TABS=["収支","収入","外注","経費","マスタ"];
+var TAB_ICONS={"収支":"📊","収入":"💰","外注":"🔗","経費":"🧾","マスタ":"⚙️"};
 
 /* ===== 認証 ===== */
 var currentUser=null;
@@ -431,10 +431,11 @@ var master={platforms:[],talents:[],agencies:[],users:[],staff:[
   {id:"s2",name:"船田 真史",type:"fixed",amount:400000},
   {id:"s3",name:"小澤 海誠",type:"fixed",amount:550000},
   {id:"s4",name:"坂場 健",type:"fixed",amount:300000}
-],outsource:[],recurringExpenses:[]};
+],outsource:[],recurringExpenses:[],incomeCategories:[]};
 var monthly={};
 var currentMonth=(function(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");})();
 var currentTab="収支";
+var currentNyuukinTab="FANZA";
 var currentOutTab="タレント";
 var talentAgencyTab="全体";
 var incRecPid=null;
@@ -528,12 +529,15 @@ function setMonth(m,data){monthly=Object.assign({},monthly);monthly[m]=data;sche
 function calcMonth(m){
   var md=getMonth(m);
   // 収入
-  var incTotal=0,incByP={};
+  var incTotal=0,incByP={},fanzaTotal=0;
   master.platforms.forEach(function(p){
     var pts=+(md.income[p.id]||0);
     var amt=calcIncAmt(p,pts);
-    incByP[p.id]=amt;incTotal+=amt;
+    incByP[p.id]=amt;incTotal+=amt;fanzaTotal+=amt;
   });
+  var otherIncTotal=0;
+  (md.otherIncome||[]).forEach(function(e){otherIncTotal+=(+e.amount||0);});
+  incTotal+=otherIncTotal;
   // タレントマスタのマイナス項目（控除収入）
   var noticeIncomeItems=[];
   master.talents.forEach(function(t){
@@ -613,7 +617,7 @@ function calcMonth(m){
   var expTotal=mainE.reduce(function(s,e){return s+(+e.amount||0);},0);
   var kanpuTotal=kanpuE.reduce(function(s,e){return s+(+e.amount||0);},0);
   var profit=incTotal-talTotal-stfTotal-outTotal-expTotal;
-  return{incTotal,incByP,noticeIncomeItems,talTotal,talByT,stfTotal,stfByS,outTotal,outByO,expTotal,kanpuTotal,expenses,mainE,kanpuE,profit,md};
+  return{incTotal,incByP,fanzaTotal,otherIncTotal,noticeIncomeItems,talTotal,talByT,stfTotal,stfByS,outTotal,outByO,expTotal,kanpuTotal,expenses,mainE,kanpuE,profit,md};
 }
 
 /* ===== レンダリング ===== */
@@ -621,6 +625,7 @@ function render(){
   renderTabs();
   var mc=document.getElementById("mc");
   if(currentTab==="収支") mc.innerHTML=renderShuushi();
+  else if(currentTab==="収入") mc.innerHTML=renderNyuukin();
   else if(currentTab==="外注") mc.innerHTML=renderGaichuu();
   else if(currentTab==="経費") mc.innerHTML=renderKeihi();
   else if(currentTab==="マスタ") mc.innerHTML=renderMasterTab();
@@ -635,6 +640,102 @@ function renderTabs(){
   document.getElementById("tabBar").innerHTML=html;
 }
 function switchTab(t){currentTab=t;render();}
+
+/* ===== 収入タブ ===== */
+function switchNyuukinTab(t){currentNyuukinTab=t;document.getElementById("mc").innerHTML=renderNyuukin();}
+function renderNyuukin(){
+  var lk=isLocked();
+  var c=calcMonth(currentMonth);
+  var md=getMonth(currentMonth);
+  var h='<div class="stab-bar">'
+    +'<button class="stab'+(currentNyuukinTab==="FANZA"?" on":"")+'" onclick="switchNyuukinTab(\'FANZA\')">FANZA<span class="stab-amt">'+yen(c.fanzaTotal)+'</span></button>'
+    +'<button class="stab'+(currentNyuukinTab==="other"?" on":"")+'" onclick="switchNyuukinTab(\'other\')">その他収入<span class="stab-amt">'+yen(c.otherIncTotal)+'</span></button>'
+    +'</div>';
+  if(currentNyuukinTab==="FANZA"){
+    h+='<div class="card"><div class="ch">💹 FANZA収入</div>';
+    if(master.platforms.length===0){
+      h+='<div class="empty">⚙️ マスタでチャット媒体を登録してください</div>';
+    }else{
+      var incRecs=(md.incomeReceipts||{});
+      h+='<table class="t"><thead><tr><th>媒体</th><th class="tr" style="width:100px">ポイント</th><th class="tr" style="width:60px">報酬率</th><th class="tr" style="width:100px">金額</th><th style="width:44px"></th></tr></thead><tbody>';
+      master.platforms.forEach(function(p){
+        var pts=md.income[p.id]||"";
+        var recs=incRecs[p.id]||[];
+        var recBtn='<button onclick="openIncRecPanel(\''+p.id+'\')" style="background:'+(recs.length?'#1a6fc4':'var(--bg2)')+';color:'+(recs.length?'#fff':'var(--text3)')+';border:1px solid '+(recs.length?'#1a6fc4':'var(--border2)')+';border-radius:4px;padding:4px 8px;font-size:12px;cursor:pointer">📎'+(recs.length?' '+recs.length+'件':'')+'</button>';
+        var pLabel=p.formula==="uriage"?'<span style="font-size:11px;color:var(--text2)">売上式</span>':p.rate+'%';
+        h+='<tr><td class="fw">'+esc(p.name)+'</td>';
+        if(lk){
+          h+='<td class="tr" style="font-size:14px;font-weight:600;color:var(--text)">'+(pts||'—')+'</td>';
+        }else{
+          h+='<td class="tr" style="padding:3px 4px"><input type="number" value="'+(pts||"")+'" placeholder="0" style="width:90px;padding:5px 8px;font-size:14px;font-weight:600;text-align:right;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text)" onchange="setIncomePt(\''+p.id+'\',this.value)" id="inc-inp-'+p.id+'"></td>';
+        }
+        h+='<td class="tr">'+pLabel+'</td>';
+        h+='<td class="tr fw" style="color:var(--blue)" id="inc-amt-'+p.id+'">'+yen(c.incByP[p.id]||0)+'</td>';
+        h+='<td style="padding:4px 6px">'+recBtn+'</td></tr>';
+      });
+      h+='<tr class="trow"><td colspan="3" class="fw">FANZA合計</td><td class="tr">'+yen(c.fanzaTotal)+'</td></tr>';
+      h+='</tbody></table>';
+    }
+    h+='</div>';
+    if(lk) return '<div style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:var(--r);padding:8px 14px;margin-bottom:12px;font-size:13px;text-align:center">🔒 ロック中 — 編集するには解除してください</div><div inert style="opacity:0.65">'+h+'</div>';
+    return h;
+  }
+  // ===== その他収入 =====
+  var cats=getAllIncomeCategories();
+  var today=(function(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");})();
+  h+='<div class="card"><div class="ch">➕ その他収入を登録</div>';
+  if(!lk){
+    h+='<datalist id="inc-cat-list">';
+    cats.forEach(function(c){h+='<option value="'+esc(c)+'">';});
+    h+='</datalist>';
+    h+='<div class="mrow"><label>カテゴリ</label><input type="text" id="oi-cat" list="inc-cat-list" placeholder="動画販売、物販など" style="width:100%;padding:8px 10px;font-size:14px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);box-sizing:border-box"></div>'
+      +'<div class="mrow"><label>金額</label><div style="display:flex;align-items:center;gap:6px"><input type="number" id="oi-amt" placeholder="0" style="flex:1;padding:8px 10px;font-size:14px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text)"><span style="color:var(--text2)">円</span></div></div>'
+      +'<div class="mrow"><label>日付</label><input type="date" id="oi-date" value="'+today+'" style="width:100%;padding:8px 10px;font-size:14px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);box-sizing:border-box"></div>'
+      +'<div class="mrow"><label>メモ</label><input type="text" id="oi-memo" placeholder="任意" style="width:100%;padding:8px 10px;font-size:14px;border:1px solid var(--border2);border-radius:var(--r);background:var(--bg2);color:var(--text);box-sizing:border-box"></div>'
+      +'<button onclick="addOtherIncome()" style="width:100%;padding:14px;background:var(--green);color:#fff;border:none;border-radius:var(--r);font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:4px">登録する</button>';
+  }
+  h+='</div>';
+  var entries=(md.otherIncome||[]).slice().sort(function(a,b){return(b.date||"")>(a.date||"")?1:-1;});
+  if(entries.length>0){
+    h+='<div class="card"><div class="ch">📋 登録済み</div><table class="t"><thead><tr><th>日付</th><th>カテゴリ</th><th>メモ</th><th class="tr">金額</th><th></th></tr></thead><tbody>';
+    var total=0;
+    entries.forEach(function(e){
+      total+=(+e.amount||0);
+      h+='<tr><td style="font-size:12px;color:var(--text2)">'+esc(e.date||'')+'</td><td class="fw">'+esc(e.category||'')+'</td><td style="font-size:12px;color:var(--text2)">'+esc(e.memo||'')+'</td><td class="tr fw" style="color:var(--blue)">'+yen(+e.amount||0)+'</td>'
+        +'<td style="padding:4px 6px">'+(lk?'':'<button class="btn bs" onclick="deleteOtherIncome(\''+e.id+'\')">削除</button>')+'</td></tr>';
+    });
+    h+='<tr class="trow"><td colspan="3">合計</td><td class="tr">'+yen(total)+'</td><td></td></tr>';
+    h+='</tbody></table></div>';
+  }
+  if(lk) return '<div style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:var(--r);padding:8px 14px;margin-bottom:12px;font-size:13px;text-align:center">🔒 ロック中 — 編集するには解除してください</div><div inert style="opacity:0.65">'+h+'</div>';
+  return h;
+}
+function getAllIncomeCategories(){
+  var cats={};
+  Object.keys(monthly).forEach(function(m){(monthly[m].otherIncome||[]).forEach(function(e){if(e.category)cats[e.category]=1;});});
+  return Object.keys(cats);
+}
+function addOtherIncome(){
+  var cat=(document.getElementById("oi-cat").value||"").trim();
+  var amt=parseFloat(document.getElementById("oi-amt").value)||0;
+  var date=document.getElementById("oi-date").value;
+  var memo=(document.getElementById("oi-memo").value||"").trim();
+  if(!cat){alert("カテゴリを入力してください");return;}
+  if(!amt){alert("金額を入力してください");return;}
+  var md=getMonth(currentMonth);
+  if(!md.otherIncome)md.otherIncome=[];
+  var id=Date.now()+"_"+Math.random().toString(36).slice(2,7);
+  md.otherIncome=md.otherIncome.concat([{id:id,category:cat,amount:amt,date:date,memo:memo}]);
+  setMonth(currentMonth,md);
+  document.getElementById("mc").innerHTML=renderNyuukin();
+}
+function deleteOtherIncome(id){
+  if(!confirm("削除しますか？"))return;
+  var md=getMonth(currentMonth);
+  md.otherIncome=(md.otherIncome||[]).filter(function(e){return e.id!==id;});
+  setMonth(currentMonth,md);
+  document.getElementById("mc").innerHTML=renderNyuukin();
+}
 
 /* ===== 収支タブ ===== */
 function renderShuushi(){
@@ -680,6 +781,9 @@ function renderShuushi(){
       h+='<tr><td class="fw" colspan="2">'+esc(item.talentName)+' '+esc(item.itemName)+'</td>'
         +'<td class="tr" style="color:var(--text2)">控除収入</td>'
         +'<td class="tr fw" style="color:var(--blue)">'+yen(item.amount)+'</td></tr>';
+    });
+    (getMonth(currentMonth).otherIncome||[]).forEach(function(e){
+      h+='<tr><td class="fw">'+esc(e.category||'その他')+'</td><td class="tr" style="color:var(--text2)" colspan="2">'+(e.memo?esc(e.memo):'')+'</td><td class="tr fw" style="color:var(--blue)">'+yen(+e.amount||0)+'</td><td></td></tr>';
     });
     h+='<tr class="trow"><td colspan="3" class="fw">収入合計</td><td class="tr" id="inc-total">'+yen(c.incTotal)+'</td></tr>';
     h+='</tbody></table>';
