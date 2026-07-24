@@ -701,10 +701,11 @@ function renderShuushi(){
   // 支出内訳
   h+='<div class="card"><div class="ch">📉 支出内訳</div>';
   h+='<table class="t"><thead><tr><th>項目</th><th class="tr">金額</th></tr></thead><tbody>';
-  h+='<tr><td>タレント報酬</td><td class="tr fw">'+yen(talGross)+'</td></tr>';
-  if(dailyPayTotal>0) h+='<tr><td style="padding-left:16px;color:var(--text3);font-size:12px">（日払い）</td><td class="tr" style="color:var(--text3);font-size:12px">（'+yen(dailyPayTotal)+'）</td></tr>';
-  h+='<tr><td>スタッフ報酬</td><td class="tr fw">'+yen(c.stfTotal)+'</td></tr>';
-  h+='<tr><td>外注報酬</td><td class="tr fw">'+yen(c.outTotal)+'</td></tr>';
+  h+='<tr><td>外注報酬</td><td class="tr fw">'+yen(supportTotal)+'</td></tr>';
+  h+='<tr><td style="padding-left:16px;color:var(--text3);font-size:12px">（タレント報酬）</td><td class="tr" style="color:var(--text3);font-size:12px">'+yen(talGross)+'</td></tr>';
+  if(dailyPayTotal>0) h+='<tr><td style="padding-left:24px;color:var(--text3);font-size:12px">（日払い控除）</td><td class="tr" style="color:var(--text3);font-size:12px">（'+yen(dailyPayTotal)+'）</td></tr>';
+  h+='<tr><td style="padding-left:16px;color:var(--text3);font-size:12px">（スタッフ報酬）</td><td class="tr" style="color:var(--text3);font-size:12px">'+yen(c.stfTotal)+'</td></tr>';
+  h+='<tr><td style="padding-left:16px;color:var(--text3);font-size:12px">（代理店・外注）</td><td class="tr" style="color:var(--text3);font-size:12px">'+yen(c.outTotal)+'</td></tr>';
   h+='<tr><td>経費合計</td><td class="tr fw">'+yen(expT)+'</td></tr>';
   h+='<tr class="trow"><td>支出合計</td><td class="tr">'+yen(totalOut)+'</td></tr>';
   h+='</tbody></table></div>';
