@@ -1086,13 +1086,69 @@ function renderGaichuu(){
   var lk=isLocked();
   var md=getMonth(currentMonth);
   var h=renderTalent()+renderStaff();
+  // 外注グループを先に構築
+  var groups={},groupOrder=[];
+  master.outsource.filter(function(o){return !o.startFrom||currentMonth>=o.startFrom;}).forEach(function(o){
+    if(!groups[o.name]){groups[o.name]=[];groupOrder.push(o.name);}
+    groups[o.name].push(o);
+  });
+  // abe式グループ名（代理店ブロックに移動）
+  var abeGroupNames=groupOrder.filter(function(gName){
+    return groups[gName].some(function(o){return o.formula==="abe";});
+  });
   // ===== 代理店ブロック =====
-  var agencies=master.agencies||[];
-  if(agencies.length>0){
+  // 代理店マスタからabe式外注と同名のものを除外
+  var normalAgencies=(master.agencies||[]).filter(function(ag){return abeGroupNames.indexOf(ag.name)<0;});
+  if(abeGroupNames.length>0||normalAgencies.length>0){
     h+='<div class="card"><div class="ch">🏢 代理店</div>';
     h+='<table class="t"><thead><tr><th>代理店</th><th class="tr" style="width:110px">pt</th><th class="tr" style="width:60px">報酬率</th><th class="tr" style="width:100px">金額</th><th style="width:36px"></th></tr></thead><tbody>';
     var agTotal=0;
-    agencies.forEach(function(ag){
+    // abe式外注グループを代理店ブロックに表示
+    abeGroupNames.forEach(function(gName){
+      var items=groups[gName];
+      var groupPts=0,groupTotal=0,abeId=null;
+      var itemRows=[];
+      items.forEach(function(o){
+        var linked=master.talents.filter(function(t){return t.outsourceId===o.id;});
+        var pts=0;
+        linked.forEach(function(t){(t.platforms||[]).forEach(function(pid){var entry=((md.talent||{})[t.id]||{})[pid]||{};pts+=+(entry.pts||0);});});
+        var amt=calcOutAmt(o,pts);
+        var dispAmt=amt;
+        if(linked.length>0){
+          var talAmt2=0;
+          linked.forEach(function(lt){(lt.platforms||[]).forEach(function(pid){var lp=master.platforms.find(function(x){return x.id===pid;});if(!lp)return;var lentry=((md.talent||{})[lt.id]||{})[pid]||{};var lpts=+(lentry.pts||0);var ldaily=getDailyTotal(lentry);var lrate=(lt.rates&&lt.rates[pid]!=null)?lt.rates[pid]:lp.rate;talAmt2+=Math.round(lpts*lrate/100)-ldaily;});});
+          dispAmt=Math.max(0,amt-talAmt2);
+        }
+        if(!abeId)abeId=o.id;
+        groupPts+=pts;groupTotal+=dispAmt;
+        itemRows.push({o:o,pts:pts,dispAmt:dispAmt,linked:linked});
+      });
+      agTotal+=groupTotal;
+      h+='<tr><td class="fw">'+esc(gName)+'</td>'
+        +'<td class="tr" style="color:var(--text2)">'+groupPts.toLocaleString()+'</td>'
+        +'<td class="tr" style="font-size:11px;color:var(--text3)">abe式</td>'
+        +'<td class="tr fw">'+yen(groupTotal)+'</td>'
+        +'<td style="white-space:nowrap;padding:4px 6px">'+(abeId?'<button class="btn be" onclick="openPaymentNotice(\''+abeId+'\')" style="background:#1a6fc4;color:#fff;border-radius:4px;padding:5px 10px;font-size:12px;opacity:1">🖨️ PDF</button>':'')+'</td></tr>';
+      var totalLinked=itemRows.reduce(function(n,r){return n+r.linked.length;},0);
+      if(totalLinked>0){
+        var odId='od-ag-abe-'+gName.replace(/\s/g,'_');
+        h+='<tr><td colspan="5" style="padding:0"><div style="padding:4px 10px;background:var(--bg2);border-bottom:1px solid var(--border)"><button onclick="toggleOutDetail(\''+odId+'\')" data-orig-text="▶ 明細を表示（'+totalLinked+'件）" style="background:none;border:none;cursor:pointer;font-size:12px;color:var(--text2);font-family:inherit">▶ 明細を表示（'+totalLinked+'件）</button></div></td></tr>';
+        h+='<tr id="'+odId+'" style="display:none"><td colspan="5" style="padding:0"><table class="t" style="margin:0">';
+        itemRows.forEach(function(r){
+          var linkedTotal=0;
+          r.linked.forEach(function(t){
+            var tpts=0,tamt=0;
+            (t.platforms||[]).forEach(function(pid){var p=master.platforms.find(function(x){return x.id===pid;});if(!p)return;var entry=((md.talent||{})[t.id]||{})[pid]||{};var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;tpts+=+(entry.pts||0);tamt+=Math.round(+(entry.pts||0)*rate/100)-getDailyTotal(entry);});
+            linkedTotal+=tamt;
+            h+='<tr style="background:var(--bg2)"><td style="padding-left:24px;font-size:13px">└ '+(t.realName?esc(t.realName)+' ('+esc(t.name)+')':esc(t.name))+'</td><td class="tr" style="font-size:13px;color:var(--text2)">'+tpts.toLocaleString()+'pt</td><td class="tr" style="font-size:12px;color:var(--text2)">報酬</td><td class="tr fw" style="color:var(--text2)">'+yen(tamt)+'</td><td></td></tr>';
+          });
+          if(r.linked.length>0){h+='<tr style="background:var(--bg2)"><td style="padding-left:12px;font-size:13px;font-weight:600;color:var(--text2)" colspan="3">外注報酬合計</td><td class="tr fw" style="color:var(--text2)">'+yen(r.dispAmt+linkedTotal)+'</td><td></td></tr>';}
+        });
+        h+='</table></td></tr>';
+      }
+    });
+    // 通常代理店（マスタから）
+    normalAgencies.forEach(function(ag){
       var agTalents=master.talents.filter(function(t){return t.agencyId===ag.id&&(!t.retiredFrom||currentMonth<t.retiredFrom);});
       var agPts=0;
       agTalents.forEach(function(t){(t.platforms||[]).forEach(function(pid){var e=((md.talent||{})[t.id]||{})[pid]||{};agPts+=+(e.pts||0);});});
@@ -1111,10 +1167,7 @@ function renderGaichuu(){
         agTalents.forEach(function(t){
           var tpts=0,tamt=0;
           (t.platforms||[]).forEach(function(pid){var p=master.platforms.find(function(x){return x.id===pid;});if(!p)return;var e=((md.talent||{})[t.id]||{})[pid]||{};var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;tpts+=+(e.pts||0);tamt+=Math.round(+(e.pts||0)*rate/100)-getDailyTotal(e);});
-          h+='<tr style="background:var(--bg2)"><td style="padding-left:24px;font-size:13px">└ '+(t.realName?esc(t.realName)+' ('+esc(t.name)+')':esc(t.name))+'</td>'
-            +'<td class="tr" style="font-size:13px;color:var(--text2)">'+tpts.toLocaleString()+'pt</td>'
-            +'<td class="tr" style="font-size:12px;color:var(--text2)">報酬</td>'
-            +'<td class="tr fw" style="color:var(--text2)">'+yen(tamt)+'</td><td></td></tr>';
+          h+='<tr style="background:var(--bg2)"><td style="padding-left:24px;font-size:13px">└ '+(t.realName?esc(t.realName)+' ('+esc(t.name)+')':esc(t.name))+'</td><td class="tr" style="font-size:13px;color:var(--text2)">'+tpts.toLocaleString()+'pt</td><td class="tr" style="font-size:12px;color:var(--text2)">報酬</td><td class="tr fw" style="color:var(--text2)">'+yen(tamt)+'</td><td></td></tr>';
         });
         h+='</table></td></tr>';
       }
@@ -1122,21 +1175,17 @@ function renderGaichuu(){
     h+='<tr class="trow"><td colspan="3">代理店合計</td><td class="tr">'+yen(agTotal)+'</td><td></td></tr>';
     h+='</tbody></table></div>';
   }
-  // ===== 外注報酬ブロック =====
-  var groups={},groupOrder=[];
-  master.outsource.filter(function(o){return !o.startFrom||currentMonth>=o.startFrom;}).forEach(function(o){
-    if(!groups[o.name]){groups[o.name]=[];groupOrder.push(o.name);}
-    groups[o.name].push(o);
-  });
+  // ===== 外注報酬ブロック（abe式を除く）=====
+  var normalGroupOrder=groupOrder.filter(function(gName){return abeGroupNames.indexOf(gName)<0;});
   h+='<div class="card"><div class="ch">🔗 外注報酬</div>';
-  if(master.outsource.length===0){
+  if(normalGroupOrder.length===0){
     h+='<div class="empty">⚙️ マスタで外注を登録してください</div>';
   }else{
     h+='<table class="t"><thead><tr><th>外注先</th><th class="tr" style="width:110px">pt</th><th class="tr" style="width:60px">報酬率</th><th class="tr" style="width:100px">金額</th><th style="width:36px"></th></tr></thead><tbody>';
     var total=0;
-    groupOrder.forEach(function(gName){
+    normalGroupOrder.forEach(function(gName){
       var items=groups[gName];
-      var groupTotal=0,groupPts=0,hasPt=false,hasAbe=false,abeId=null,hasPdf=false,pdfId=null;
+      var groupTotal=0,groupPts=0,hasPt=false,hasPdf=false,pdfId=null;
       var itemRows=[];
       items.forEach(function(o){
         var linked=master.talents.filter(function(t){return t.outsourceId===o.id;});
@@ -1148,21 +1197,16 @@ function renderGaichuu(){
         }else{pts=+(md.outsource[o.id]||0);}
         var amt=calcOutAmt(o,pts);
         var dispAmt=amt,dispRate=o.formula==="fixed"?'固定':o.rate+'%';
-        if(o.formula==="abe"&&hasLinked){
-          var talAmt2=0;
-          linked.forEach(function(lt){(lt.platforms||[]).forEach(function(pid){var lp=master.platforms.find(function(x){return x.id===pid;});if(!lp)return;var lentry=((md.talent||{})[lt.id]||{})[pid]||{};var lpts=+(lentry.pts||0);var ldaily=getDailyTotal(lentry);var lrate=(lt.rates&&lt.rates[pid]!=null)?lt.rates[pid]:lp.rate;talAmt2+=Math.round(lpts*lrate/100)-ldaily;});});
-          dispAmt=Math.max(0,amt-talAmt2);dispRate='27%';hasAbe=true;abeId=o.id;
-        }
         if(o.formula!=="fixed"){hasPt=true;groupPts+=pts;}
-        if(o.showPdf&&!hasAbe){hasPdf=true;pdfId=o.id;}
+        if(o.showPdf){hasPdf=true;pdfId=o.id;}
         groupTotal+=dispAmt;
         itemRows.push({o:o,pts:pts,dispAmt:dispAmt,dispRate:dispRate,hasLinked:hasLinked,linked:linked});
       });
       total+=groupTotal;
-      var ptCell=hasPt?'<td class="tr" style="color:var(--text2)">'+groupPts.toLocaleString()+(items.some(function(o){return master.talents.some(function(t){return t.outsourceId===o.id;});})?' <br><span style="font-size:11px">（合計）</span>':'')+' </td>':'<td class="tr" style="color:var(--text3)">—</td>';
+      var ptCell=hasPt?'<td class="tr" style="color:var(--text2)">'+groupPts.toLocaleString()+'</td>':'<td class="tr" style="color:var(--text3)">—</td>';
       var rateCell=items.length===1?'<td class="tr">'+itemRows[0].dispRate+'</td>':'<td class="tr" style="font-size:11px;color:var(--text3)">複数</td>';
       h+='<tr><td class="fw">'+esc(gName)+'</td>'+ptCell+rateCell+'<td class="tr fw">'+yen(groupTotal)+'</td>'
-        +'<td style="white-space:nowrap;padding:4px 6px">'+(hasAbe?'<button class="btn be" onclick="openPaymentNotice(\''+abeId+'\')" style="background:#1a6fc4;color:#fff;border-radius:4px;padding:5px 10px;font-size:12px;opacity:1">🖨️ PDF</button>':hasPdf?'<button class="btn be" onclick="openPaymentNotice(\''+pdfId+'\')" style="background:#1a6fc4;color:#fff;border-radius:4px;padding:5px 10px;font-size:12px;opacity:1">🖨️ PDF</button>':'')+'</td></tr>';
+        +'<td style="white-space:nowrap;padding:4px 6px">'+(hasPdf?'<button class="btn be" onclick="openPaymentNotice(\''+pdfId+'\')" style="background:#1a6fc4;color:#fff;border-radius:4px;padding:5px 10px;font-size:12px;opacity:1">🖨️ PDF</button>':'')+'</td></tr>';
       var detailCount=itemRows.reduce(function(n,r){return n+(r.hasLinked?r.linked.length:1);},0);
       if(items.length>1||itemRows.some(function(r){return r.hasLinked;})){
         var odId='od-g-'+gName.replace(/\s/g,'_');
@@ -1173,14 +1217,11 @@ function renderGaichuu(){
           var itemLabel=o.item?esc(o.item):(o.formula==="fixed"?'固定':'外注報酬');
           if(r.hasLinked){
             h+='<tr style="background:var(--bg2)"><td style="padding-left:12px;font-size:13px;font-weight:600" colspan="3">'+itemLabel+'</td><td class="tr fw" style="color:var(--text2)">'+yen(r.dispAmt)+'</td><td></td></tr>';
-            var linkedTotal=0;
             r.linked.forEach(function(t){
               var tpts=0,tamt=0;
               (t.platforms||[]).forEach(function(pid){var p=master.platforms.find(function(x){return x.id===pid;});if(!p)return;var entry=((md.talent||{})[t.id]||{})[pid]||{};var rate=(t.rates&&t.rates[pid]!=null)?t.rates[pid]:p.rate;tpts+=+(entry.pts||0);tamt+=Math.round(+(entry.pts||0)*rate/100)-getDailyTotal(entry);});
-              linkedTotal+=tamt;
               h+='<tr style="background:var(--bg2)"><td style="padding-left:24px;font-size:13px">└ '+(t.realName?esc(t.realName)+' ('+esc(t.name)+')':esc(t.name))+'</td><td class="tr" style="font-size:13px;color:var(--text2)">'+tpts.toLocaleString()+'pt</td><td class="tr" style="font-size:12px;color:var(--text2)">報酬</td><td class="tr fw" style="color:var(--text2)">'+yen(tamt)+'</td><td></td></tr>';
             });
-            if(o.formula==="abe"){h+='<tr style="background:var(--bg2)"><td style="padding-left:12px;font-size:13px;font-weight:600;color:var(--text2)" colspan="3">外注報酬合計</td><td class="tr fw" style="color:var(--text2)">'+yen(r.dispAmt+linkedTotal)+'</td><td></td></tr>';}
           }else{
             var ptCellD=o.formula==="fixed"?'<td class="tr" style="color:var(--text3)">—</td>':'<td class="tr"><input type="number" value="'+(md.outsource[o.id]||"")+'" placeholder="0" style="width:80px;padding:4px 6px;font-size:13px;text-align:right" onchange="setOutPt(\''+o.id+'\',this.value)"></td>';
             h+='<tr style="background:var(--bg2)"><td style="padding-left:12px;font-size:13px">'+itemLabel+'</td>'+ptCellD+'<td class="tr" style="font-size:12px;color:var(--text2)">'+r.dispRate+'</td><td class="tr fw" style="color:var(--text2)" id="out-'+o.id+'">'+yen(r.dispAmt)+'</td><td></td></tr>';
@@ -1190,10 +1231,7 @@ function renderGaichuu(){
       }else{
         var o=itemRows[0].o;
         if(o.formula!=="fixed"&&!itemRows[0].hasLinked){
-          var odId2='od-g-'+gName.replace(/\s/g,'_');
-          h+='<tr id="'+odId2+'" style="display:none"><td colspan="5" style="padding:0"><table class="t" style="margin:0">';
           h+='<tr style="background:var(--bg2)"><td style="padding-left:12px;font-size:13px">'+(o.item?esc(o.item):'外注報酬')+'</td><td class="tr"><input type="number" value="'+(md.outsource[o.id]||"")+'" placeholder="0" style="width:80px;padding:4px 6px;font-size:13px;text-align:right" onchange="setOutPt(\''+o.id+'\',this.value)"></td><td class="tr" style="font-size:12px">'+o.rate+'%</td><td class="tr fw" id="out-'+o.id+'">'+yen(itemRows[0].dispAmt)+'</td><td></td></tr>';
-          h+='</table></td></tr>';
         }
       }
     });
