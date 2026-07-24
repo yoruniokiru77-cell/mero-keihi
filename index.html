@@ -47,6 +47,11 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","N
 .tab-bar::-webkit-scrollbar{display:none}
 .mtab{padding:11px 14px;font-size:13px;font-weight:600;border:none;background:transparent;cursor:pointer;color:var(--text2);white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-2px;font-family:inherit}
 .mtab:hover{color:var(--text)}.mtab.on{color:var(--blue);border-bottom-color:var(--blue)}
+.stab-bar{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.stab-bar::-webkit-scrollbar{display:none}
+.stab{flex:1;min-width:0;padding:10px 8px;border-radius:var(--r);border:1px solid var(--border);background:var(--bg);cursor:pointer;font-family:inherit;text-align:center;font-size:12px;font-weight:600;color:var(--text2);line-height:1.3;white-space:nowrap}
+.stab.on{background:var(--blue);color:#fff;border-color:var(--blue)}
+.stab-amt{font-size:11px;font-weight:700;display:block;margin-top:2px}
 
 /* ボディ */
 .body{max-width:680px;margin:0 auto;padding:14px 6px 80px;padding-top:100px}
@@ -430,6 +435,7 @@ var master={platforms:[],talents:[],agencies:[],users:[],staff:[
 var monthly={};
 var currentMonth=(function(){var d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");})();
 var currentTab="収支";
+var currentOutTab="タレント";
 var talentAgencyTab="全体";
 var incRecPid=null;
 var expFilter="all",expSort="asc",expSubTab="入力";
@@ -1083,10 +1089,11 @@ function renderStaff2(){
 }
 
 /* ===== 外注タブ ===== */
+function switchOutTab(t){currentOutTab=t;document.getElementById("mc").innerHTML=renderGaichuu();}
 function renderGaichuu(){
   var lk=isLocked();
   var md=getMonth(currentMonth);
-  var h=renderTalent()+renderStaff();
+  var c=calcMonth(currentMonth);
   // 外注グループを先に構築
   var groups={},groupOrder=[];
   master.outsource.filter(function(o){return !o.startFrom||currentMonth>=o.startFrom;}).forEach(function(o){
@@ -1097,14 +1104,41 @@ function renderGaichuu(){
   var abeGroupNames=groupOrder.filter(function(gName){
     return groups[gName].some(function(o){return o.formula==="abe";});
   });
-  // ===== 代理店ブロック =====
   // 代理店マスタからabe式外注と同名のものを除外（空白除去して比較）
   var abeGroupNamesNorm=abeGroupNames.map(function(n){return n.replace(/\s/g,'');});
   var normalAgencies=(master.agencies||[]).filter(function(ag){return abeGroupNamesNorm.indexOf(ag.name.replace(/\s/g,''))<0;});
+  var normalGroupOrder=groupOrder.filter(function(gName){return abeGroupNames.indexOf(gName)<0;});
+  // 代理店合計を事前計算
+  var agTotal=0;
+  abeGroupNames.forEach(function(gName){
+    groups[gName].forEach(function(o){
+      var linked=master.talents.filter(function(t){return t.outsourceId===o.id;});
+      var pts=0;linked.forEach(function(t){(t.platforms||[]).forEach(function(pid){pts+=+((((md.talent||{})[t.id]||{})[pid])||{}).pts||0;});});
+      var amt=calcOutAmt(o,pts);
+      if(linked.length>0){var ta=0;linked.forEach(function(lt){(lt.platforms||[]).forEach(function(pid){var lp=master.platforms.find(function(x){return x.id===pid;});if(!lp)return;var le=((md.talent||{})[lt.id]||{})[pid]||{};var lr=(lt.rates&&lt.rates[pid]!=null)?lt.rates[pid]:lp.rate;ta+=Math.round(+(le.pts||0)*lr/100)-getDailyTotal(le);});});amt=Math.max(0,amt-ta);}
+      agTotal+=amt;
+    });
+  });
+  normalAgencies.forEach(function(ag){
+    var agPts=0;
+    master.talents.filter(function(t){return t.agencyId===ag.id&&(!t.retiredFrom||currentMonth<t.retiredFrom);}).forEach(function(t){(t.platforms||[]).forEach(function(pid){agPts+=+((((md.talent||{})[t.id]||{})[pid])||{}).pts||0;});});
+    agTotal+=Math.round(agPts*((ag.rate||0)+30)/100);
+  });
+  // サブタブバー
+  var OUT_TABS=[{k:"タレント",lbl:"タレント報酬",amt:c.talTotal},{k:"外注",lbl:"外注報酬",amt:c.outTotal},{k:"スタッフ",lbl:"スタッフ報酬",amt:c.stfTotal},{k:"代理店",lbl:"代理店報酬",amt:agTotal}];
+  var h='<div class="stab-bar">';
+  OUT_TABS.forEach(function(t){h+='<button class="stab'+(currentOutTab===t.k?" on":"")+'" onclick="switchOutTab(\''+t.k+'\')">'+t.lbl+'<span class="stab-amt">'+yen(t.amt)+'</span></button>';});
+  h+='</div>';
+  var stabBar=h;h='';
+  // サブタブコンテンツ
+  if(currentOutTab==="タレント") return stabBar+renderTalent();
+  if(currentOutTab==="スタッフ") return stabBar+renderStaff();
+  // ===== 代理店ブロック =====
+  if(currentOutTab==="代理店"){
   if(abeGroupNames.length>0||normalAgencies.length>0){
     h+='<div class="card"><div class="ch">🏢 代理店</div>';
     h+='<table class="t"><thead><tr><th>代理店</th><th class="tr" style="width:110px">pt</th><th class="tr" style="width:60px">報酬率</th><th class="tr" style="width:100px">金額</th><th style="width:36px"></th></tr></thead><tbody>';
-    var agTotal=0;
+    var dispAgTotal=0;
     // abe式外注グループを代理店ブロックに表示
     abeGroupNames.forEach(function(gName){
       var items=groups[gName];
@@ -1125,7 +1159,7 @@ function renderGaichuu(){
         groupPts+=pts;groupTotal+=dispAmt;
         itemRows.push({o:o,pts:pts,dispAmt:dispAmt,linked:linked});
       });
-      agTotal+=groupTotal;
+      dispAgTotal+=groupTotal;
       h+='<tr><td class="fw">'+esc(gName)+'</td>'
         +'<td class="tr" style="color:var(--text2)">'+groupPts.toLocaleString()+'</td>'
         +'<td class="tr" style="font-size:11px;color:var(--text3)">abe式</td>'
@@ -1156,7 +1190,7 @@ function renderGaichuu(){
       agTalents.forEach(function(t){(t.platforms||[]).forEach(function(pid){var e=((md.talent||{})[t.id]||{})[pid]||{};agPts+=+(e.pts||0);});});
       var combinedRate=(ag.rate||0)+30;
       var agAmt=Math.round(agPts*combinedRate/100);
-      agTotal+=agAmt;
+      dispAgTotal+=agAmt;
       h+='<tr><td class="fw">'+esc(ag.name)+'</td>'
         +'<td class="tr" style="color:var(--text2)">'+agPts.toLocaleString()+'</td>'
         +'<td class="tr">'+combinedRate+'%</td>'
@@ -1174,11 +1208,14 @@ function renderGaichuu(){
         h+='</table></td></tr>';
       }
     });
-    h+='<tr class="trow"><td colspan="3">代理店合計</td><td class="tr">'+yen(agTotal)+'</td><td></td></tr>';
+    h+='<tr class="trow"><td colspan="3">代理店合計</td><td class="tr">'+yen(dispAgTotal)+'</td><td></td></tr>';
     h+='</tbody></table></div>';
   }
+  if(lk) return stabBar+'<div style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:var(--r);padding:8px 14px;margin-bottom:12px;font-size:13px;text-align:center">🔒 ロック中 — 編集するには解除してください</div><div inert style="opacity:0.65">'+h+'</div>';
+  return stabBar+h;
+  }
   // ===== 外注報酬ブロック（abe式を除く）=====
-  var normalGroupOrder=groupOrder.filter(function(gName){return abeGroupNames.indexOf(gName)<0;});
+  if(currentOutTab!=="外注") return stabBar+h;
   h+='<div class="card"><div class="ch">🔗 外注報酬</div>';
   if(normalGroupOrder.length===0){
     h+='<div class="empty">⚙️ マスタで外注を登録してください</div>';
@@ -1241,8 +1278,8 @@ function renderGaichuu(){
     h+='</tbody></table>';
   }
   h+='</div>';
-  if(lk) return '<div style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:var(--r);padding:8px 14px;margin-bottom:12px;font-size:13px;text-align:center">🔒 ロック中 — 編集するには解除してください</div><div inert style="opacity:0.65">'+h+'</div>';
-  return h;
+  if(lk) return stabBar+'<div style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:var(--r);padding:8px 14px;margin-bottom:12px;font-size:13px;text-align:center">🔒 ロック中 — 編集するには解除してください</div><div inert style="opacity:0.65">'+h+'</div>';
+  return stabBar+h;
 }
 function setOutPt(oid,val){
   var md=getMonth(currentMonth);
