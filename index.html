@@ -453,7 +453,7 @@ function setSync(s,l){var d=document.getElementById("dot"),lb=document.getElemen
 
 /* ===== ロック ===== */
 function isAdmin(){return !currentUser||!currentUser.role||currentUser.role==="admin";}
-function canLock(){if(!currentUser)return true;return currentUser.role==="admin"||!!currentUser.canLock;}
+function canLock(){if(!currentUser)return true;if(!currentUser.role||currentUser.role==="admin")return true;return !!currentUser.canLock;}
 function isLocked(){return !isAdmin()||!!(monthly[currentMonth]||{}).locked;}
 function updateLockBtn(){
   var btn=document.getElementById("lockBtn");if(!btn)return;
