@@ -446,7 +446,7 @@ function fmtMonth(ym){var p=ym.split("-");return p[0]+"年"+String(+p[1])+"月";
 function setSync(s,l){var d=document.getElementById("dot"),lb=document.getElementById("slabel");if(d)d.className="dot "+s;if(lb)lb.textContent=l;}
 
 /* ===== ロック ===== */
-function isAdmin(){return !currentUser||currentUser.role==="admin";}
+function isAdmin(){return !currentUser||!currentUser.role||currentUser.role==="admin";}
 function isLocked(){return !isAdmin()||!!(monthly[currentMonth]||{}).locked;}
 function updateLockBtn(){
   var btn=document.getElementById("lockBtn");if(!btn)return;
