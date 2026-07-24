@@ -1188,7 +1188,7 @@ function renderGaichuu(){
       var agTalents=master.talents.filter(function(t){return t.agencyId===ag.id&&(!t.retiredFrom||currentMonth<t.retiredFrom);});
       var agPts=0;
       agTalents.forEach(function(t){(t.platforms||[]).forEach(function(pid){var e=((md.talent||{})[t.id]||{})[pid]||{};agPts+=+(e.pts||0);});});
-      var combinedRate=(ag.rate||0)+30;
+      var combinedRate=(ag.rate||0);
       var agAmt=Math.round(agPts*combinedRate/100);
       dispAgTotal+=agAmt;
       h+='<tr><td class="fw">'+esc(ag.name)+'</td>'
@@ -2461,7 +2461,7 @@ function openAgencyPaymentNotice(agId){
       pts+=+(entry.pts||0);
     });
   });
-  var combinedRate=(ag.rate||0)+30;
+  var combinedRate=(ag.rate||0);
   var total=Math.round(pts*combinedRate/100);
   var today=new Date();
   var dateStr=today.getFullYear()+'年'+(today.getMonth()+1)+'月'+today.getDate()+'日';
