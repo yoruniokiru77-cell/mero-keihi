@@ -364,8 +364,8 @@ var GAS_URL="https://script.google.com/macros/s/AKfycbwZdtgbE6OjbHfw1rjnuuJE2aTw
 var LINE_GAS_URL="https://script.google.com/macros/s/AKfycbwZdtgbE6OjbHfw1rjnuuJE2aTwfkLMa4pGcb3aobn3rhJBIbrFLSD-6-2wunu1sv0r0A/exec";
 var KUBUN=KANPU_MODE?["会社","関ケ","関プ","船田"]:["会社","関ケ","船田"];
 var KAMOKU=["旅費交通費","車両費","水道光熱費","通信費","家賃","租税公課","福利厚生費","消耗品費","会議費交際費","キャストとの飲食費","給料","その他"];
-var TABS=["収支","タレント","スタッフ","外注","経費","マスタ"];
-var TAB_ICONS={"収支":"📊","タレント":"🎤","スタッフ":"👥","外注":"🔗","経費":"🧾","マスタ":"⚙️"};
+var TABS=["収支","外注","経費","マスタ"];
+var TAB_ICONS={"収支":"📊","外注":"🔗","経費":"🧾","マスタ":"⚙️"};
 
 /* ===== 認証 ===== */
 var currentUser=null;
@@ -615,8 +615,6 @@ function render(){
   renderTabs();
   var mc=document.getElementById("mc");
   if(currentTab==="収支") mc.innerHTML=renderShuushi();
-  else if(currentTab==="タレント") mc.innerHTML=renderTalent();
-  else if(currentTab==="スタッフ") mc.innerHTML=renderStaff();
   else if(currentTab==="外注") mc.innerHTML=renderGaichuu();
   else if(currentTab==="経費") mc.innerHTML=renderKeihi();
   else if(currentTab==="マスタ") mc.innerHTML=renderMasterTab();
@@ -865,7 +863,7 @@ function renderTalent(){
   if(lk) return '<div style="background:#fff3cd;color:#856404;border:1px solid #ffc107;border-radius:var(--r);padding:8px 14px;margin-bottom:12px;font-size:13px;text-align:center">🔒 ロック中 — 編集するには解除してください</div><div inert style="opacity:0.65">'+h+'</div>';
   return h;
 }
-function renderTalent2(){if(currentTab==="タレント")document.getElementById("mc").innerHTML=renderTalent();}
+function renderTalent2(){if(currentTab==="外注")document.getElementById("mc").innerHTML=renderGaichuu();}
 function setTalentPt(tid,pid,val){
   var md=getMonth(currentMonth);
   if(!md.talent)md.talent={};
@@ -1080,14 +1078,15 @@ function removeStaffExtra(idx){
 }
 function renderStaff2(){
   var mc=document.getElementById("mc");
-  if(mc&&currentTab==="スタッフ")mc.innerHTML=renderStaff();
+  if(mc&&currentTab==="外注")mc.innerHTML=renderGaichuu();
 }
 
 /* ===== 外注タブ ===== */
 function renderGaichuu(){
   var lk=isLocked();
   var md=getMonth(currentMonth);
-  var h="<div class=\"card\"><div class=\"ch\">🔗 外注報酬</div>";
+  var h=renderTalent()+renderStaff();
+  h+="<div class=\"card\"><div class=\"ch\">🔗 外注報酬</div>";
   var agenciesWithRate=(master.agencies||[]).filter(function(ag){return ag.rate!=null&&ag.rate>0;});
   if(master.outsource.length===0&&agenciesWithRate.length===0){
     h+='<div class="empty">⚙️ マスタで外注を登録してください</div>';
