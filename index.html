@@ -1122,7 +1122,7 @@ function renderGaichuu(){
   normalAgencies.forEach(function(ag){
     var agPts=0;
     master.talents.filter(function(t){return t.agencyId===ag.id&&(!t.retiredFrom||currentMonth<t.retiredFrom);}).forEach(function(t){(t.platforms||[]).forEach(function(pid){agPts+=+((((md.talent||{})[t.id]||{})[pid])||{}).pts||0;});});
-    agTotal+=Math.round(agPts*((ag.rate||0)+30)/100);
+    agTotal+=Math.round(agPts*(ag.rate||0)/100);
   });
   // サブタブバー
   var OUT_TABS=[{k:"タレント",lbl:"タレント報酬",amt:c.talTotal},{k:"外注",lbl:"外注報酬",amt:c.outTotal},{k:"スタッフ",lbl:"スタッフ報酬",amt:c.stfTotal},{k:"代理店",lbl:"代理店報酬",amt:agTotal}];
