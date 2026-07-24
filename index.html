@@ -553,8 +553,9 @@ function calcMonth(m){
     });
     talByT[t.id]=tamt;talTotal+=tamt;
   });
-  // スタッフ報酬
+  // スタッフ報酬（2026-05以降のみ）
   var stfTotal=0,stfByS={};
+  if(m<"2026-05"){stfTotal=0;}else
   master.staff.forEach(function(s){
     var se=(md.staff||{})[s.id]||{};
     if(se.excluded)return;
