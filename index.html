@@ -1097,8 +1097,9 @@ function renderGaichuu(){
     return groups[gName].some(function(o){return o.formula==="abe";});
   });
   // ===== 代理店ブロック =====
-  // 代理店マスタからabe式外注と同名のものを除外
-  var normalAgencies=(master.agencies||[]).filter(function(ag){return abeGroupNames.indexOf(ag.name)<0;});
+  // 代理店マスタからabe式外注と同名のものを除外（空白除去して比較）
+  var abeGroupNamesNorm=abeGroupNames.map(function(n){return n.replace(/\s/g,'');});
+  var normalAgencies=(master.agencies||[]).filter(function(ag){return abeGroupNamesNorm.indexOf(ag.name.replace(/\s/g,''))<0;});
   if(abeGroupNames.length>0||normalAgencies.length>0){
     h+='<div class="card"><div class="ch">🏢 代理店</div>';
     h+='<table class="t"><thead><tr><th>代理店</th><th class="tr" style="width:110px">pt</th><th class="tr" style="width:60px">報酬率</th><th class="tr" style="width:100px">金額</th><th style="width:36px"></th></tr></thead><tbody>';
