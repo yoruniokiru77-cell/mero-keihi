@@ -447,10 +447,11 @@ function setSync(s,l){var d=document.getElementById("dot"),lb=document.getElemen
 
 /* ===== ロック ===== */
 function isAdmin(){return !currentUser||!currentUser.role||currentUser.role==="admin";}
+function canLock(){var id=currentUser&&currentUser.userId;return !id||id==="admin"||id==="関島";}
 function isLocked(){return !isAdmin()||!!(monthly[currentMonth]||{}).locked;}
 function updateLockBtn(){
   var btn=document.getElementById("lockBtn");if(!btn)return;
-  if(!isAdmin()){btn.style.display="none";return;}
+  if(!isAdmin()||!canLock()){btn.style.display="none";return;}
   btn.style.display="inline-block";
   if((monthly[currentMonth]||{}).locked){btn.textContent="🔒 ロック中";btn.style.color="var(--red)";}
   else{btn.textContent="🔓 ロック";btn.style.color="var(--text2)";}
